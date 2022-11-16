@@ -14,13 +14,14 @@ import com.tsl.androidbase.R
 import com.tsl.androidbase.activity.bottomnavication.BottomNavicationActivity
 import com.tsl.androidbase.activity.login.LoginActivity
 import com.tsl.androidbase.activity.show.ShowActivity
+import com.tsl.androidbase.service.HttpService
 
 class SplashActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
         XXPermissions.with(this) // 不适配 Android 11 可以这样写
-            .permission(Permission.MANAGE_EXTERNAL_STORAGE,Permission.CAMERA)
+            .permission(Permission.MANAGE_EXTERNAL_STORAGE, Permission.CAMERA)
             .request(OnPermissionCallback { permissions, all ->
                 if (all) {
                     ToastUtils.show("获取所需权限成功")
@@ -31,8 +32,11 @@ class SplashActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         L.v("我是启动页面哦！")
-        startActivity(Intent(this,BottomNavicationActivity::class.java))
+      //  startActivity(Intent(this, BottomNavicationActivity::class.java))
+        HttpService.startService(this)
+        finish()
     }
+
     override fun setStatusBar() {
         StatusBarUtil.setTransparent(this)
     }

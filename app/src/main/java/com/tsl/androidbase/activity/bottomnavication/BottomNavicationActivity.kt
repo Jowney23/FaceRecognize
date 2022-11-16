@@ -47,9 +47,7 @@ class BottomNavicationActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        val intent = Intent(this,
-            CommonAccessibilityService::class.java)
-        startService(intent);
+
     }
 
     override fun setStatusBar() {

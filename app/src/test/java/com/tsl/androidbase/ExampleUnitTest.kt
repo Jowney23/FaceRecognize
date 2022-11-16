@@ -21,4 +21,12 @@ class ExampleUnitTest {
         println(decryptData)
         println("----结束---")
     }
+
+    @Test
+    fun aalist(){
+        val content = mutableListOf<String>()
+        content.add("wwwwww")
+
+        println(content)
+    }
 }
