@@ -12,7 +12,7 @@
 
         <item name="colorAccent">@color/app_colorAccent</item>
         <!--解决首屏启动白屏-->
-        <item name="android:windowBackground">@color/app_colorTransparent</item>
+        <item name="android:windowBackground">@color/app_colorBlue</item>
     </style>
 
     <style name="MyTablayoutstyle" parent="Base.Widget.Design.TabLayout">

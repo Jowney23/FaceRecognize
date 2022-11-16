@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.open.face.view.ColorPreviewTextureView
+        android:id="@+id/facerecognize_previewTextureView"
+        android:layout_width="960px"
+        android:layout_height="1280px" />
+
+    <com.open.face.view.FaceDetectionView
+        android:id="@+id/facerecognize_faceDetectionView"
+        android:layout_width="960px"
+        android:layout_height="1280px" />
+    <Button
+        android:id="@+id/facerecognize_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="切换镜头"/>
+</FrameLayout>
