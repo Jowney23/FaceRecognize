@@ -1,4 +1,4 @@
-rootProject.name='AndroidBase'
+rootProject.name='FaceRecognize'
 include ':app'
 include ':common'
 include ':player'
