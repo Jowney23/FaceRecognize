@@ -34,8 +34,21 @@ import static cn.face.sdk.FaceInterface.cw_op_t.CW_OP_QUALITY;
  * Creator: Jowney  (~._.~)
  * Date: 2019/5/10/0:12
  * Description:
+ * <p>
+ * VIDEO模式人脸检测引擎，用于预览帧人脸追踪
+ * <p>
+ * 用于特征提取的引擎
+ * <p>
+ * IMAGE模式活体检测引擎，用于预览帧人脸活体检测
+ * <p>
+ * 1:N
+ *
+ * @return 1:1
+ * @param idCardPicture
+ * @param videoPicture
+ * @return
  *//*
-
+//虹软算法助手
 public class CWFaceHelper implements IFaceHelper {
     private static final String TAG = "CWFaceHelper";
     private static CWFaceHelper mCWFaceHelper = null;
@@ -58,20 +71,20 @@ public class CWFaceHelper implements IFaceHelper {
 
     */
 /**
-     * VIDEO模式人脸检测引擎，用于预览帧人脸追踪
-     *//*
+ * VIDEO模式人脸检测引擎，用于预览帧人脸追踪
+ *//*
 
     private FaceEngine ftEngine;
     */
 /**
-     * 用于特征提取的引擎
-     *//*
+ * 用于特征提取的引擎
+ *//*
 
     private FaceEngine frEngine;
     */
 /**
-     * IMAGE模式活体检测引擎，用于预览帧人脸活体检测
-     *//*
+ * IMAGE模式活体检测引擎，用于预览帧人脸活体检测
+ *//*
 
     private FaceEngine flEngine;
 
@@ -269,10 +282,10 @@ public class CWFaceHelper implements IFaceHelper {
 
     */
 /**
-     * 1:N
-     *
-     * @return
-     *//*
+ * 1:N
+ *
+ * @return
+ *//*
 
     @Override
     public boolean identifyFace() {
@@ -311,12 +324,12 @@ public class CWFaceHelper implements IFaceHelper {
 
     */
 /**
-     * 1:1
-     *
-     * @param idCardPicture
-     * @param videoPicture
-     * @return
-     *//*
+ * 1:1
+ *
+ * @param idCardPicture
+ * @param videoPicture
+ * @return
+ *//*
 
     @Override
     public Double identifyFace(byte[] idCardPicture, byte[] videoPicture) {

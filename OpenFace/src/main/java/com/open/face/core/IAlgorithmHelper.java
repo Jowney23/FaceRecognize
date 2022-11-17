@@ -5,9 +5,9 @@ import android.os.Environment;
 /**
  * Creator: Jowney  (~._.~)
  * Date: 2019/5/10/0:10
- * Description:
+ * Description:算法助手 将算法常规用法接口化
  */
-public interface IFaceHelper {
+public interface IAlgorithmHelper {
     //注意路径结尾统一都不要“/”,命名规则文件夹以DIR结尾，文件以file结尾
     String INIT_DATA_PATH_DIR = Environment.getExternalStorageDirectory() + "/LDFace";
     String TEMPLATE_DB_PATH_DIR = INIT_DATA_PATH_DIR + "/Template";

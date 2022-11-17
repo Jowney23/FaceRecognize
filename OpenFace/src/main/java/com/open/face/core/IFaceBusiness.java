@@ -2,9 +2,10 @@ package com.open.face.core;
 
 /**
  * Created by Jowney on 2018/7/8.
+ * 人脸识别业务接口
  */
 
-public interface IFaceRecognize {
+public interface IFaceBusiness {
     final static int MATCH_TO_N_MODE = 0x01;//1：N模式
     final static int MATCH_TO_ONE_MODE = 0x10;//1:1模式
     final static int ENROLL_MODE = 0x11;//人脸建模模式
