@@ -1,35 +1,34 @@
-/*
+
 package com.open.face.core;
 
+
+import android.content.Context;
+import android.nfc.Tag;
+import android.os.FileUtils;
 import android.util.Log;
 
-import com.example.frsdktest.CaffeMobile;
-import com.yunzhi.common.base.EventTips;
-import com.yunzhi.common.base.TipMessageCode;
-import com.yunzhi.common.util.FileUtils;
-import com.yunzhi.common.util.LogUtils;
+import com.arcsoft.face.ErrorInfo;
+import com.arcsoft.face.FaceEngine;
+import com.arcsoft.face.FaceFeature;
+import com.arcsoft.face.FaceInfo;
+import com.arcsoft.face.FaceSimilar;
+import com.arcsoft.face.enums.DetectFaceOrientPriority;
+import com.arcsoft.face.enums.DetectMode;
+import com.jowney.common.util.FileTool;
+import com.open.face.model.EventTips;
+import com.open.face.model.TipMessageCode;
 
 import org.greenrobot.eventbus.EventBus;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import cn.face.sdk.CWConstant;
-import cn.face.sdk.FaceCommon;
-import cn.face.sdk.FaceDetTrack;
-import cn.face.sdk.FaceInfo;
-import cn.face.sdk.FaceInterface;
-import cn.face.sdk.FaceParam;
-import cn.face.sdk.FaceRecog;
 
-import static cn.face.sdk.FaceInterface.cw_op_t.CW_OP_ALL;
-import static cn.face.sdk.FaceInterface.cw_op_t.CW_OP_DET;
-import static cn.face.sdk.FaceInterface.cw_op_t.CW_OP_QUALITY;
-
-*/
 /**
  * Creator: Jowney  (~._.~)
  * Date: 2019/5/10/0:12
@@ -44,14 +43,12 @@ import static cn.face.sdk.FaceInterface.cw_op_t.CW_OP_QUALITY;
  * 1:N
  *
  * @return 1:1
- * @param idCardPicture
- * @param videoPicture
  * @return
- *//*
+ */
 //虹软算法助手
-public class CWFaceHelper implements IFaceHelper {
-    private static final String TAG = "CWFaceHelper";
-    private static CWFaceHelper mCWFaceHelper = null;
+public class ArcAlgorithmHelper implements IAlgorithmHelper {
+    private static final String TAG = "ArcAlgorithmHelper";
+    private static ArcAlgorithmHelper mArcAlgorithmHelper = null;
     private int mDetectHandle = -1;
     private int mRecognizeHandle = -1;
     private int mFaceFeatureLength = 0;//人脸模型长度
@@ -68,81 +65,99 @@ public class CWFaceHelper implements IFaceHelper {
     public static String[] residentTmplateId = new String[1];
 
     //................
-
-    */
-/**
- * VIDEO模式人脸检测引擎，用于预览帧人脸追踪
- *//*
-
+    private static final int MAX_DETECT_NUM = 10;
+    /**
+     * VIDEO模式人脸检测引擎，用于预览帧人脸追踪
+     */
     private FaceEngine ftEngine;
-    */
-/**
- * 用于特征提取的引擎
- *//*
-
+    /**
+     * 用于特征提取的引擎
+     */
     private FaceEngine frEngine;
-    */
-/**
- * IMAGE模式活体检测引擎，用于预览帧人脸活体检测
- *//*
-
+    /**
+     * IMAGE模式活体检测引擎，用于预览帧人脸活体检测
+     */
     private FaceEngine flEngine;
+    /**
+     * 人脸比对
+     */
+    private FaceEngine fcEngine;
 
-    public static CWFaceHelper getInstance() {
-        if (mCWFaceHelper == null) {
-            mCWFaceHelper = new CWFaceHelper();
+    private int ftInitCode = -1;
+    private int frInitCode = -1;
+    private int flInitCode = -1;
+
+    public List<FaceInfo> faceInfoList = new ArrayList<>();
+
+    public static ArcAlgorithmHelper getInstance() {
+        if (mArcAlgorithmHelper == null) {
+            mArcAlgorithmHelper = new ArcAlgorithmHelper();
         }
-        return mCWFaceHelper;
+        return mArcAlgorithmHelper;
     }
 
     @Override
-    public String init() {
-        //创建人脸数组 用来存储人脸
-        mFaceInfoArray = new FaceInfo[10];
-        for (int i = 0; i < 10; i++) {
-            mFaceInfoArray[i] = new FaceInfo();
-        }
+    public String initEngine(Context applicationContext) {
+        ftEngine = new FaceEngine();
+        ftInitCode = ftEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_VIDEO, DetectFaceOrientPriority.ASF_OP_270_ONLY,
+                16, MAX_DETECT_NUM, FaceEngine.ASF_FACE_DETECT);
 
-        //创建识别和检测句柄
-        mDetectHandle = createFaceDetectHandle(CWConstant.CW_LICENSE, CWConstant.faceMinSize, CWConstant.faceMaxSize, CWConstant.Model_PATH);
-        mRecognizeHandle = createRecognizeHandle(CWConstant.CW_LICENSE, CWConstant.Model_PATH);
-        if (mDetectHandle >= FaceInterface.cw_errcode_t.CW_UNKNOWN_ERR || mRecognizeHandle >= FaceInterface.cw_errcode_t.CW_UNKNOWN_ERR) {
-            return "失败";
-        } else {
-            //获取人脸特征值需要的数组长度
-            mFaceFeatureLength = FaceRecog.cwGetFeatureLength(mRecognizeHandle);
-            Log.i("wxy", "init: "+mFaceFeatureLength);
-            return "成功";
-        }
+        frEngine = new FaceEngine();
+        frInitCode = frEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_IMAGE, DetectFaceOrientPriority.ASF_OP_0_ONLY,
+                16, MAX_DETECT_NUM, FaceEngine.ASF_FACE_RECOGNITION);
 
+        flEngine = new FaceEngine();
+        flInitCode = flEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_IMAGE, DetectFaceOrientPriority.ASF_OP_0_ONLY,
+                16, MAX_DETECT_NUM, FaceEngine.ASF_LIVENESS);
+
+
+        fcEngine = new FaceEngine();
+        int engineCode = fcEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_IMAGE, DetectFaceOrientPriority.ASF_OP_0_ONLY, 16, 1, FaceEngine.ASF_FACE_RECOGNITION | FaceEngine.ASF_FACE_DETECT);
+
+        Log.i(TAG, "initEngine:  init: " + ftInitCode);
+
+        if (ftInitCode != ErrorInfo.MOK) {
+           /* String error = getString(R.string.specific_engine_init_failed, "ftEngine", ftInitCode);
+            Log.i(TAG, "initEngine: " + error);
+            showToast(error);*/
+        }
+        if (frInitCode != ErrorInfo.MOK) {
+           /* String error = getString(R.string.specific_engine_init_failed, "frEngine", frInitCode);
+            Log.i(TAG, "initEngine: " + error);
+            showToast(error);*/
+        }
+        if (flInitCode != ErrorInfo.MOK) {
+           /* String error = getString(R.string.specific_engine_init_failed, "flEngine", flInitCode);
+            Log.i(TAG, "initEngine: " + error);
+            showToast(error);*/
+        }
+        return "";
     }
 
+
     @Override
-    public String enrollTemplate(byte[] srcVideoData) {
+    public String enrollFaceFeature(byte[] srcVideoData, FaceInfo faceInfo) {
         String ret = null;
-        byte[] feature = new byte[mFaceFeatureLength];
+        FaceFeature faceFeature = new FaceFeature();
         try {
             String newTemplateID = UUID.randomUUID().toString().replace("-", "");
-            //本地保存一份
-            int videoFaceCount = detectFace(srcVideoData);
-            Log.i(TAG, "enrollTemplate: " + mFaceInfoArray[0].scores[0]);
-            if (videoFaceCount == 1 && mFaceInfoArray[0].scores[0] >= ENROLL_THRESHOLD_VALUE) {
-                Log.i(TAG, "enrollTemplate: " + mFaceInfoArray[0].scores[0]);
-                //提取视频流中人脸特征值(^*_*^)
-                FaceRecog.cwGetFaceFeature(mRecognizeHandle, mFaceInfoArray[0].alignedData, mFaceInfoArray[0].alignedW, mFaceInfoArray[0].alignedH, mFaceInfoArray[0].nChannels, feature);
-                if (FileUtils.writeByteArrayToFile(IFaceHelper.TEMPLATE_DB_PATH_DIR + "/" + newTemplateID, feature)) {
-                    ret = newTemplateID;
-                } else {
-                    return null;
-                }
+            //提取视频流中人脸特征值(^*_*^)
+            long frStartTime = System.currentTimeMillis();
+            int frCode = frEngine.extractFaceFeature(srcVideoData, 640, 480, FaceEngine.CP_PAF_NV21, faceInfo, faceFeature);
+            if (frCode == ErrorInfo.MOK) {
+                Log.i(TAG, "提取人脸特征耗时：" + (System.currentTimeMillis() - frStartTime) + "ms");
 
             } else {
                 return null;
             }
-
+            if (FileTool.writeByteArrayToFile(CacheHelper.TEMPLATE_DB_PATH_DIR + "/" + newTemplateID, faceFeature.getFeatureData())) {
+                ret =  newTemplateID;
+            } else {
+                return null;
+            }
 
             //内存保存一份
-            residentsFeatureGlobal.put(newTemplateID, feature);
+            residentsFeatureGlobal.put(newTemplateID, faceFeature.getFeatureData());
             templateCountGlobal += 1;
             loadedTemplateCountGlobal += 1;
             EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + templateCountGlobal, TipMessageCode.MESSAGE_LOADT_TEMPLATE_START));
@@ -153,14 +168,12 @@ public class CWFaceHelper implements IFaceHelper {
             e.printStackTrace();
             return null;
         }
-
-        return ret;
+        return  ret;
     }
 
     @Override
-    public void updateTemplate(byte[] srcVideoData, String templateID,float faceQualityScore) {
-       */
-/* String ret = null;
+    public void updateFaceFeature(byte[] srcVideoData, String templateID, float faceQualityScore) {
+       /* String ret = null;
         byte[] feature = new byte[mFaceFeatureLength];
         try {
             if (faceQualityScore >= FACE_QULITY_UPDATE_THRESHOLD_VALUE) {
@@ -192,12 +205,11 @@ public class CWFaceHelper implements IFaceHelper {
             return null;
         }
 
-        return ret;*//*
-
+        return ret;*/
     }
 
     @Override
-    public void loadAllTemplate() {
+    public void loadAllFaceFeature() {
         //加载所有模版数据
         new Thread(new Runnable() {
             @Override
@@ -211,11 +223,11 @@ public class CWFaceHelper implements IFaceHelper {
                 int version = 0;
                 Boolean vnRet;
                 //初始化文件
-                File mDir = new File(INIT_DATA_PATH_DIR);//YZ文件夹
+                File mDir = new File(CacheHelper.INIT_DATA_PATH_DIR);//YZ文件夹
                 if (!mDir.isDirectory() && !mDir.mkdir()) return;
 
 
-                File mTemplateDir = new File(TEMPLATE_DB_PATH_DIR);//模版文件夹
+                File mTemplateDir = new File(CacheHelper.TEMPLATE_DB_PATH_DIR);//模版文件夹
                 if (!mTemplateDir.isDirectory() && !mTemplateDir.mkdir()) return;
 
 
@@ -239,24 +251,24 @@ public class CWFaceHelper implements IFaceHelper {
 
                     }
 
-                    if (version != TEMPLATE_VERSION) {
+                    if (version != CacheHelper.TEMPLATE_VERSION) {
                         //TODO: 2018/7/6 提示模版需要升级
                         break;
                     }
                     //加载模板
                     try {
-                        Log.i("wxy", "本地加载run: 人脸模板长度："+mFaceFeatureLength);
-                        vnRet = FileUtils.readByteArrayFromFile(IFaceHelper.TEMPLATE_DB_PATH_DIR + "/" + mTemplateName, feature, mFaceFeatureLength);
+                        Log.i("wxy", "本地加载run: 人脸模板长度：" + mFaceFeatureLength);
+                        vnRet = FileTool.readByteArrayFromFile(CacheHelper.TEMPLATE_DB_PATH_DIR + "/" + mTemplateName, feature, mFaceFeatureLength);
                         if (vnRet) {
                             residentsFeatureGlobal.put(mTemplateName, feature);
                         } else {
-                            LogUtils.v("卧槽！模板号为：" + mTemplateName + " 的老兄模板加载失败了");
+                            //  LogUtils.v("卧槽！模板号为：" + mTemplateName + " 的老兄模板加载失败了");
                             continue;
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
                         // TODO: 2018/7/6 如果有人的模板为空应该提示
-                        LogUtils.v("卧槽！模板号为：" + mTemplateName + "的老兄加载时发生了异常");
+                        Log.v(TAG, "卧槽！模板号为：" + mTemplateName + "的老兄加载时发生了异常");
                         continue;
                     }
                     //模版加载成功后 跳出循环 继续下一个
@@ -270,86 +282,113 @@ public class CWFaceHelper implements IFaceHelper {
     }
 
     @Override
-    public void deleteTemplate(String templateName) {
+    public void deleteFaceFeature(String templateName) {
 
     }
 
+    /**
+     * 人脸检测建议在Camera回调函数中执行
+     * @param nv21
+     * @return
+     */
     @Override
-    public int detectFace(byte[] videoPicture) {
-        return FaceDetTrack.cwFaceDetection(mDetectHandle, videoPicture, CWConstant.VIDEO_W, CWConstant.VIDEO_H, FaceInterface.cw_img_form_t.CW_IMAGE_NV21, FaceInterface.cw_img_angle_t.CW_IMAGE_ANGLE_270
-                , FaceInterface.cw_img_mirror_t.CW_IMAGE_MIRROR_NONE, CW_OP_ALL, mFaceInfoArray);
+    public FaceInfo detectFace(byte[] nv21) {
+        long ftStartTime = System.currentTimeMillis();
+        //detectFaces内部有调用faceInfoList的clear
+        int code = ftEngine.detectFaces(nv21, 640, 480, FaceEngine.CP_PAF_NV21, faceInfoList);
+        if (code == ErrorInfo.MOK) {
+         //   Log.i(TAG, "人脸检测耗时: " + (System.currentTimeMillis() - ftStartTime) + "ms");
+
+        } else {
+         //   Log.v(TAG,"错误码："+code);
+            return null;
+        }
+        //只保留最大人脸信息
+        if (faceInfoList == null || faceInfoList.size() < 1) {
+            return null;
+        }
+        FaceInfo maxFaceInfo = faceInfoList.get(0);
+        for (FaceInfo faceInfo : faceInfoList) {
+            if (faceInfo.getRect().width() > maxFaceInfo.getRect().width()) {
+                maxFaceInfo = faceInfo;
+            }
+        }
+        return maxFaceInfo;
     }
 
-    */
-/**
- * 1:N
- *
- * @return
- *//*
 
+    /**
+     * 1:N
+     *
+     * @return
+     */
     @Override
-    public boolean identifyFace() {
+    public boolean identifyFaceFeature(byte[] videoFrame,FaceInfo faceInfo) {
         float similarityTem = 0;
         //第一步生成特征值
-        byte[] feature = new byte[mFaceFeatureLength];
-        LogUtils.v("比对份数：" +"开始获取特征值");
-        int result = FaceRecog.cwGetFaceFeature(mRecognizeHandle, mFaceInfoArray[0].alignedData, mFaceInfoArray[0].alignedW, mFaceInfoArray[0].alignedH, mFaceInfoArray[0].nChannels, feature);
+        FaceFeature tempFaceFeature = new FaceFeature();
+        FaceSimilar faceSimilar = new FaceSimilar();
+        Log.v(TAG, "开始1：N");
+        int frCode = frEngine.extractFaceFeature(videoFrame, 640, 480, FaceEngine.CP_PAF_NV21, faceInfo, tempFaceFeature);
+        if (frCode == ErrorInfo.MOK) {
 
-        // int result = CaffeMobile.getInstance().FFFeaExtract(FeatureHandle[0], videoBGR, faceW, faceH, videoFaceFeature, maxFaceRectArray);
-        if (result != 0) {
-            LogUtils.v("比对份数：" +"开始获取特征值失败");
-            return false;
+        } else {
+
         }
-        LogUtils.v("比对份数：" +"开始获取特征值城功");
         //第二步存储住户模版的residentsFeature中去比对
         Map.Entry<String, byte[]> entry;
         Iterator<Map.Entry<String, byte[]>> residentIterator = residentsFeatureGlobal.entrySet().iterator();
         while (residentIterator.hasNext()) {
             entry = residentIterator.next();
-            FaceRecog.cwComputeMatchScore(mRecognizeHandle, feature, entry.getValue(), 1, similarity);
-            LogUtils.v("比对份数：" + similarity[0]);
-            if (similarity[0] > similarityTem) {
-                similarityTem = similarity[0];
+            fcEngine.compareFaceFeature(tempFaceFeature, new FaceFeature(entry.getValue()), faceSimilar);
+            //   FaceRecog.cwComputeMatchScore(mRecognizeHandle, feature, entry.getValue(), 1, similarity);
+            Log.v(TAG, "比对份数：" + faceSimilar.getScore());
+            if (faceSimilar.getScore() > similarityTem) {
+                similarityTem = faceSimilar.getScore();
                 residentTmplateId[0] = entry.getKey();
             }
         }
 
-        if (similarityTem >= RECOGNIZE_THRESHOLD_VALUE) {
-             //  LogUtils.v("比对份数：" + similarity[0]);
+        if (similarityTem >= CacheHelper.RECOGNIZE_THRESHOLD_VALUE) {
+            Log.v(TAG, "比对份数：" + similarity[0]);
             return true;
         } else {
             return false;
         }
     }
 
-    */
-/**
- * 1:1
- *
- * @param idCardPicture
- * @param videoPicture
- * @return
- *//*
-
+    /**
+     * 1:1
+     *
+     * @param idCardPicture
+     * @param videoPicture
+     * @return
+     */
     @Override
-    public Double identifyFace(byte[] idCardPicture, byte[] videoPicture) {
+    public Double identifyFaceFeature(byte[] idCardPicture, byte[] videoPicture) {
         return null;
     }
 
     @Override
-    public void destroy() {
-        if (mRecognizeHandle != -1) {
-            int ret = FaceRecog.cwReleaseRecogHandle(mRecognizeHandle);
-            if (ret == FaceInterface.cw_errcode_t.CW_SDKLIT_OK)
-                mRecognizeHandle = -1;
+    public void unInitEngine() {
+        if (ftInitCode == ErrorInfo.MOK && ftEngine != null) {
+            synchronized (ftEngine) {
+                int ftUnInitCode = ftEngine.unInit();
+                Log.i(TAG, "unInitEngine: " + ftUnInitCode);
+            }
         }
-
-        if (mDetectHandle != -1) {
-            int ret = FaceDetTrack.cwReleaseDetHandle(mDetectHandle);
-            if (ret == FaceInterface.cw_errcode_t.CW_SDKLIT_OK)
-                mDetectHandle = -1;
+        if (frInitCode == ErrorInfo.MOK && frEngine != null) {
+            synchronized (frEngine) {
+                int frUnInitCode = frEngine.unInit();
+                Log.i(TAG, "unInitEngine: " + frUnInitCode);
+            }
         }
-
+        if (flInitCode == ErrorInfo.MOK && flEngine != null) {
+            synchronized (flEngine) {
+                int flUnInitCode = flEngine.unInit();
+                Log.i(TAG, "unInitEngine: " + flUnInitCode);
+            }
+        }
     }
 
     @Override
@@ -357,34 +396,4 @@ public class CWFaceHelper implements IFaceHelper {
         return null;
     }
 
-    private int createFaceDetectHandle(String license, int faceMinSize, int faceMaxSize, String modelPath) {
-        // 检测配置文件路径，默认放置到sdcard根目录
-        String sDetModelPath = new StringBuilder(modelPath).append(File.separator).append("_configs_frontend_x86_arm.xml").toString();
-        int ret = FaceDetTrack.cwCreateDetHandle(sDetModelPath, license);
-        if (ret >= FaceInterface.cw_errcode_t.CW_UNKNOWN_ERR) {
-            EventBus.getDefault().post(new EventTips<String>("算法获取句柄时出错:" + ret, TipMessageCode.MESSAGE_COLOR_FACERECOGNIZE_ERROR));
-            return ret;
-        }
-        // 创建句柄后设置检测参数
-        FaceParam faceParam = new FaceParam();
-        FaceDetTrack.cwGetFaceParam(ret, faceParam);
-        faceParam.minSize = faceMinSize;
-        faceParam.maxSize = faceMaxSize;
-        FaceDetTrack.cwSetFaceParam(ret, faceParam, sDetModelPath);
-        return ret;
-
-    }
-
-    private int createRecognizeHandle(String license, String modelPath) {
-        String sRecogModelPath = new StringBuilder(modelPath).append(File.separator).append("CWR_Config_1_1.xml").toString();
-        int ret = FaceRecog.cwCreateRecogHandle(sRecogModelPath, license, 0);
-        Log.i(TAG, "createRecognizeHandle: " + ret);
-        if (ret >= FaceInterface.cw_errcode_t.CW_UNKNOWN_ERR) {
-            EventBus.getDefault().post(new EventTips<String>("算法获取句柄时出错" + ret, TipMessageCode.MESSAGE_COLOR_FACERECOGNIZE_ERROR));
-            return ret;
-        }
-        mFaceFeatureLength = FaceRecog.cwGetFeatureLength(ret);
-        return ret;
-    }
 }
-*/

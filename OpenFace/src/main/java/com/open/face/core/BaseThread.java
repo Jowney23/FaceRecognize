@@ -88,6 +88,6 @@ public abstract class BaseThread implements Runnable {
     }
 
 
-    public abstract void execute();
+    protected abstract void execute();
 
 }

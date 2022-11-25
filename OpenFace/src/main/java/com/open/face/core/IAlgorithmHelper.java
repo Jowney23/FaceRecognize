@@ -1,6 +1,9 @@
 package com.open.face.core;
 
+import android.content.Context;
 import android.os.Environment;
+
+import com.arcsoft.face.FaceInfo;
 
 /**
  * Creator: Jowney  (~._.~)
@@ -8,56 +11,48 @@ import android.os.Environment;
  * Description:算法助手 将算法常规用法接口化
  */
 public interface IAlgorithmHelper {
-    //注意路径结尾统一都不要“/”,命名规则文件夹以DIR结尾，文件以file结尾
-    String INIT_DATA_PATH_DIR = Environment.getExternalStorageDirectory() + "/LDFace";
-    String TEMPLATE_DB_PATH_DIR = INIT_DATA_PATH_DIR + "/Template";
-    String LICENSE_DIR = INIT_DATA_PATH_DIR+"/License";
-    String ENROLL_PHOTO_DB_PATH_DIR = INIT_DATA_PATH_DIR + "/ResidentInformation/TemplatePhoto";
-    String IDCARD_PHOTO_DB_PATH_DIR = INIT_DATA_PATH_DIR + "/ResidentInformation/IdCardPhoto";
-    int TEMPLATE_VERSION = 0;
-    float RECOGNIZE_THRESHOLD_VALUE = 0.85f; //人脸比对阈值
-    float ENROLL_THRESHOLD_VALUE = 0.85f; //人脸建模阈值
-    float FACE_QULITY_UPDATE_THRESHOLD_VALUE = 0.9f;//图片质量达到0.9 则更新模板
+
 
     /**
      * 初始化算法
      *
      * @return 返回初始化结果
      */
-    String init();
+    String initEngine(Context applicationContext);
+
 
     /**
-     * 生成模板
+     * 注册模板接口
      *
      * @param srcVideoData
      * @return
      */
-    String enrollTemplate(byte[] srcVideoData);
+    String enrollFaceFeature(byte[] srcVideoData, FaceInfo faceInfo);
 
     /**
      * 更新本地模板
      *
      * @param srcVideoData
      */
-    void updateTemplate(byte[] srcVideoData, String templateID, float faceQualityScore);
+    void updateFaceFeature(byte[] srcVideoData, String templateID, float faceQualityScore);
 
     /**
      * 加载本地人脸模板，1：N时使用
      */
-    void loadAllTemplate();
+    void loadAllFaceFeature();
 
     /**
      * 删除模板
      *
      * @param templateName
      */
-    void deleteTemplate(String templateName);
+    void deleteFaceFeature(String templateName);
 
     /**
      * @param videoPicture
      * @return 人脸个数
      */
-    int detectFace(byte[] videoPicture);
+    FaceInfo detectFace(byte[] videoPicture);
 
     /**
      * 1：N
@@ -65,7 +60,7 @@ public interface IAlgorithmHelper {
      * @return
      */
 
-    boolean identifyFace();
+    boolean identifyFaceFeature(byte[] videoFrame,FaceInfo faceInfo);
 
     /**
      * 1:1
@@ -74,12 +69,12 @@ public interface IAlgorithmHelper {
      * @param videoPicture
      * @return
      */
-    Double identifyFace(byte[] idCardPicture, byte[] videoPicture);
+    Double identifyFaceFeature(byte[] idCardPicture, byte[] videoPicture);
 
     /**
      * 销毁算法
      */
-    void destroy();
+    void unInitEngine();
 
     /**
      * 错误信息

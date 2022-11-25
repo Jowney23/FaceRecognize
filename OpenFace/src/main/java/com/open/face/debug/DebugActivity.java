@@ -1,22 +1,23 @@
 package com.open.face.debug;
 
 import android.app.Activity;
-import android.app.ActivityManager;
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 
 import android.view.View;
-import android.widget.Toast;
 
 
 import androidx.annotation.Nullable;
 
 import com.hjq.toast.ToastUtils;
+import com.jowney.common.util.logger.L;
 import com.open.face.R;
 import com.open.face.camera.ColorCamera;
+import com.open.face.core.ArcAlgorithmHelper;
 import com.open.face.model.EventTips;
 import com.open.face.model.TipMessageCode;
 import com.open.face.view.ColorPreviewTextureView;
-import com.open.face.view.FaceDetectionView;
+import com.open.face.view.FaceCoveringCircleView;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -29,21 +30,31 @@ import org.greenrobot.eventbus.ThreadMode;
 public class DebugActivity extends Activity {
     //flag防止一直在刷新View
     private long flag;
-    FaceDetectionView faceDetectionView;
+    FaceCoveringCircleView faceCoveringView;
     ColorPreviewTextureView colorPreviewTextureView;
+
+    boolean libraryExists = true;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.facerecognize_debugactivitylayout);
         EventBus.getDefault().register(this);
+        ApplicationInfo applicationInfo = getApplicationInfo();
+
+        ArcAlgorithmHelper.getInstance().initEngine(this);
         colorPreviewTextureView = findViewById(R.id.facerecognize_previewTextureView);
-                faceDetectionView = findViewById(R.id.facerecognize_faceDetectionView);
-                findViewById(R.id.facerecognize_bt).setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        ColorCamera.getInstance().switchCamera();
-                    }
-                });
+        faceCoveringView = findViewById(R.id.facerecognize_faceDetectionView);
+        colorPreviewTextureView.setView(faceCoveringView);
+       /* FaceRecognizeThread tem = new FaceRecognizeThread("face_thread");
+        tem.setView(faceDetectionView);
+        tem.start();*/
+        findViewById(R.id.facerecognize_bt).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ColorCamera.getInstance().switchCamera();
+            }
+        });
       /*  int initOK = FsGrayRecognizeHelper.getInstance().initGrayRecognize();
         if (initOK != FsGrayRecognizeHelper.PFSBIO_OK) {
             // TODO: 2018/7/6 dialog  提示算法未升级
@@ -77,6 +88,7 @@ public class DebugActivity extends Activity {
 
     }
 
+
     //所有的提示事件
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void receiveMessageTip(EventTips eventTips) {
@@ -90,6 +102,20 @@ public class DebugActivity extends Activity {
         }
 
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
+      int pp =  ColorCamera.getInstance().startCamera();
+        L.v("打开摄像头的结果"+pp);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        ColorCamera.getInstance().stopCamera();
+    }
+
+
 
     @Override
     protected void onDestroy() {

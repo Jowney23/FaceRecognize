@@ -5,12 +5,12 @@
 
     <com.open.face.view.ColorPreviewTextureView
         android:id="@+id/facerecognize_previewTextureView"
-        android:layout_width="960px"
-        android:layout_height="1280px" />
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
-    <com.open.face.view.FaceDetectionView
+    <com.open.face.view.FaceCoveringCircleView
         android:id="@+id/facerecognize_faceDetectionView"
-        android:layout_width="960px"
+        android:layout_width="match_parent"
         android:layout_height="1280px" />
     <Button
         android:id="@+id/facerecognize_bt"

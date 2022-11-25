@@ -1,7 +1,8 @@
 package com.open.face.model;
 
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Creator: Jowney  (~._.~)
@@ -10,15 +11,19 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 
 public class VideoFrameModel {
-    private static ConcurrentLinkedQueue<byte[]> videoFrameQueue = new ConcurrentLinkedQueue<>();
+    private static byte[] videoFrameData;
+    private static Lock lock = new ReentrantLock();
 
-    public static void addVideoFrame(byte[] byteArray) {
-        if (videoFrameQueue.isEmpty()) videoFrameQueue.add(byteArray);
+    public static synchronized void addVideoFrame(byte[] byteArray) {
+
+        videoFrameData = byteArray;
+
     }
 
-    public static byte[] pollVideoFrame() {
+    public static synchronized byte[] getVideoFrame() {
 
-        return videoFrameQueue.poll();
+        return videoFrameData;
+
     }
 
 

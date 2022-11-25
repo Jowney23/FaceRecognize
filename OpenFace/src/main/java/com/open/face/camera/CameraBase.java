@@ -1,14 +1,20 @@
 package com.open.face.camera;
 
 import android.graphics.ImageFormat;
+import android.graphics.Point;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 
 import android.util.Log;
 import android.view.Surface;
+import android.view.SurfaceView;
+import android.view.TextureView;
+import android.view.View;
 
 
 import androidx.annotation.NonNull;
+
+import com.jowney.common.util.logger.L;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,8 +31,11 @@ public abstract class CameraBase implements Camera.PreviewCallback {
     private final static int FAILURE = 0;
     private int mPreviewWidth = 640; // default 1440
     private int mPreviewHeight = 480; // default 1080
+    private int mCanvasWidth = 0;
+    private int mCanvasHeight = 0;
+
     private float mPreviewScale = mPreviewHeight * 1f / mPreviewWidth;
-    private int mDisplayOrientation;
+
     private Camera mCamera;
     private Camera.Parameters mParameters;
     private SurfaceTexture mSurfaceTexture;
@@ -34,12 +43,36 @@ public abstract class CameraBase implements Camera.PreviewCallback {
     private int mCameraId = -1;
     private CameraListener mCameraListener;
     public byte[] mPreviewBuffer;
-
+    /**
+     * 预览时 Camera采集数据直接显示在屏幕上角度不一定对，所以需要调用
+     * mCamera.setDisplayOrientation(mCameraClockwiseRotationValue);
+     * Camera数据顺时针旋转该值后显示在屏幕上
+     */
+    private int mCameraClockwiseRotationValue;
+    /**
+     * 该值代表使用者期望Camera数据预览的方向
+     * 该值经过计算后才能得到mCameraClockwiseRotationValue
+     */
+    private int mDisplayOrientation;
 
     /**
      * 初始化Camera需要的数据
+     * @param cameraID
+     * @param previewWidth NV21数据的宽
+     * @param previewHeight NV21数据的高
+     * @param canvasWidth 预览View的宽
+     * @param canvasHeight 预览View的高
+     * @param displayOrientation 画面显示的方向，以竖屏手机为例，0代表期望竖直显示画面，1代表逆时针旋转90度，以此类推
+     * @param surfaceTexture
+     * @param cameraListener
      */
-    public void initCamera(int cameraID, int displayOrientation
+    public void initCamera(
+              int cameraID
+            , int previewWidth
+            , int previewHeight
+            , int canvasWidth
+            , int canvasHeight
+            , int displayOrientation
             , @NonNull SurfaceTexture surfaceTexture
             , @NonNull CameraListener cameraListener) {
         this.mCameraListener = cameraListener;
@@ -64,8 +97,9 @@ public abstract class CameraBase implements Camera.PreviewCallback {
      *
      * @return
      */
-    public int startCamera() {
-
+    public synchronized int startCamera() {
+        //防止多次调用OpenCamera
+        if (mCamera != null) return FAILURE;
         try {
             mCamera = Camera.open(mCameraId);
             Camera.getCameraInfo(mCameraId, mCameraInfo);
@@ -84,11 +118,11 @@ public abstract class CameraBase implements Camera.PreviewCallback {
             if (mPreviewBuffer == null) {
                 mPreviewBuffer = new byte[mPreviewWidth * mPreviewHeight * 3 / 2];
             }
-            mCamera.addCallbackBuffer(mPreviewBuffer);
-            mCamera.setPreviewCallbackWithBuffer(this); // 设置预览的回调
+
+            mCamera.setPreviewCallback(this); // 设置预览的回调
 
             mCamera.startPreview();
-
+            mCameraListener.onCameraOpened(null, mCameraId, mCameraClockwiseRotationValue, false);
             return SUCCESS;
         } catch (IOException e) {
             e.printStackTrace();
@@ -161,7 +195,7 @@ public abstract class CameraBase implements Camera.PreviewCallback {
     }
 
     /**
-     * 设置相机显示的方向，必须设置，否则显示的图像方向会错误
+     * 要求相机显示的方向，必须设置，否则显示的图像方向会错误
      */
     private void setDisplayOrientation(int rotation) {
         // int rotation = mActivity.getWindowManager().getDefaultDisplay().getRotation();
@@ -180,14 +214,15 @@ public abstract class CameraBase implements Camera.PreviewCallback {
                 degrees = 270;
                 break;
         }
-        int result;
+
         if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-            result = (mCameraInfo.orientation + degrees) % 360;
-            result = (360 - result) % 360;  // compensate the mirror
+            mCameraClockwiseRotationValue = (mCameraInfo.orientation + degrees) % 360;
+            mCameraClockwiseRotationValue = (360 - mCameraClockwiseRotationValue) % 360;  // compensate the mirror
         } else {  // back-facing
-            result = (mCameraInfo.orientation - degrees + 360) % 360;
+            mCameraClockwiseRotationValue = (mCameraInfo.orientation - degrees + 360) % 360;
         }
-        mCamera.setDisplayOrientation(result);
+
+        mCamera.setDisplayOrientation(mCameraClockwiseRotationValue);
     }
 
 /*
@@ -248,7 +283,6 @@ public abstract class CameraBase implements Camera.PreviewCallback {
 
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
-        mCamera.addCallbackBuffer(mPreviewBuffer);
         mCameraListener.onPreview(data, camera);
     }
 }

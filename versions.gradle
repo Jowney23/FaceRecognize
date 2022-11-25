@@ -18,7 +18,7 @@ ext {
 def app_versions = [:]
 app_versions.appName = "J"
 app_versions.appNameDebug = "J~"
-app_versions.appApplicationId = "com.tsl.app"
+app_versions.appApplicationId = "com.arcsoft.arcfacedemo"
 ext.extAppVersions = app_versions
 
 /*安装包的信息*/

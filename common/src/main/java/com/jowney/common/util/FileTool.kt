@@ -2236,5 +2236,43 @@ class FileTool {
                 Log.e("TAG", var8.toString())
             }
         }
+        @JvmStatic
+        fun writeByteArrayToFile(filePath: String?, a_WriteBuffer: ByteArray?): Boolean {
+            try {
+                val file = File(filePath)
+                val FOS = FileOutputStream(file)
+                FOS.write(a_WriteBuffer)
+                FOS.flush()
+                FOS.close()
+            } catch (e: FileNotFoundException) {
+                // TODO Auto-generated catch block
+                e.printStackTrace()
+                return false
+            } catch (e: IOException) {
+                // TODO Auto-generated catch block
+                e.printStackTrace()
+                return false
+            }
+            return true
+        }
+        @JvmStatic
+        fun readByteArrayFromFile(filePath: String?, outArray: ByteArray?, length: Int): Boolean {
+            try {
+                val file = File(filePath)
+                val fis = FileInputStream(file)
+                var n = 0
+                while (n != -1) {
+                    n = fis.read(outArray)
+                }
+                fis.close()
+            } catch (e: FileNotFoundException) {
+                e.printStackTrace()
+                return false
+            } catch (e: IOException) {
+                e.printStackTrace()
+                return false
+            }
+            return true
+        }
     }
 }
