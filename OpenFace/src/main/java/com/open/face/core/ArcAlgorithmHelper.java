@@ -201,17 +201,14 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
     @Override
     public String enrollFaceFeatureBitmap(Bitmap bitmap) {
         synchronized (this) {
+            //对齐函数中有判断bitmap宽高是否为4的倍数，如果是的话返回原bitmap，不是的话返回新的
+            bitmap = ArcSoftImageUtil.getAlignedBitmap(bitmap, false);
             if (bitmap == null) return "";
             int width = bitmap.getWidth();
             int height = bitmap.getHeight();
-            if (width % 4 != 0 ) {
-                Log.e(TAG, "registerBgr24:  invalid params");
-                return null;
-            }
             byte[] bgr24 = ArcSoftImageUtil.createImageData(bitmap.getWidth(), bitmap.getHeight(), ArcSoftImageFormat.BGR24);
             int transformCode = ArcSoftImageUtil.bitmapToImageData(bitmap, bgr24, ArcSoftImageFormat.BGR24);
             if (transformCode != ArcSoftImageUtilError.CODE_SUCCESS) return "";
-
 
             String ret;
             String newTemplateID = UUID.randomUUID().toString().replace("-", "");
@@ -233,6 +230,7 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
                     Log.i(TAG, "图片->提取人脸特征耗时：" + (System.currentTimeMillis() - frStartTime) + "ms");
 
                 } else {
+                    Log.e(TAG, "提取特征值失败" + frCode);
                     return null;
                 }
                 if (FileTool.writeByteArrayToFile(CacheHelper.TEMPLATE_DB_PATH_DIR + "/" + newTemplateID, faceFeature.getFeatureData())) {
