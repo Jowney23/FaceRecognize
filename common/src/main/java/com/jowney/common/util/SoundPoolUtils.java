@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-
 /**
  * Created by Jowney on 2018/7/8.
  */
@@ -47,22 +46,32 @@ public class SoundPoolUtils {
     public void loadSounds(ArrayList<Integer> list) {
 
         for (int resourceID : list) {
-            int id = mSoundPool.load(BaseApplication.application, resourceID, 1);// 1
-            resourceMap.put(String.valueOf(resourceID), id);
+            int soundId = mSoundPool.load(BaseApplication.application, resourceID, 1);// 1
+            resourceMap.put(String.valueOf(resourceID), soundId);
         }
     }
 
     /**
      * 播放声音
      *
-     * @param soundID
+     * @param resourceID
      */
-    public void play(final int soundID) {
-        int id = resourceMap.get(String.valueOf(soundID));
-        mSoundPool.play(id, 1.0f, 1.0f, 1, 0, 1.0f);
+    public int play(final int resourceID) {
+        int soundId = resourceMap.get(String.valueOf(resourceID));
+        int streamId = mSoundPool.play(soundId, 1.0f, 1.0f, 1, 0, 1.0f);
+        return streamId;
     }
 
-    public void  releasSoundPool(){
+    /**
+     * 暂停声音
+     *
+     * @param streamID
+     */
+    public void stop(final int streamID) {
+        mSoundPool.stop(streamID);
+    }
+
+    public void releaseSoundPool() {
         mSoundPool.release();
     }
 }

@@ -1,20 +1,14 @@
 package com.open.face.camera;
 
 import android.graphics.ImageFormat;
-import android.graphics.Point;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 
 import android.util.Log;
 import android.view.Surface;
-import android.view.SurfaceView;
-import android.view.TextureView;
-import android.view.View;
 
 
 import androidx.annotation.NonNull;
-
-import com.jowney.common.util.logger.L;
 
 import java.io.IOException;
 import java.util.List;
@@ -29,12 +23,12 @@ public abstract class CameraBase implements Camera.PreviewCallback {
     private static final int TEXTURE_NAME = 10;
     private final static int SUCCESS = 1;
     private final static int FAILURE = 0;
-    private int mPreviewWidth = 640; // default 1440
-    private int mPreviewHeight = 480; // default 1080
+    private int mNV21Width = 640; // default 640
+    private int mNV21Height = 480; // default 480
     private int mCanvasWidth = 0;
     private int mCanvasHeight = 0;
 
-    private float mPreviewScale = mPreviewHeight * 1f / mPreviewWidth;
+    private float mCanvasScale = 1;
 
     private Camera mCamera;
     private Camera.Parameters mParameters;
@@ -57,19 +51,16 @@ public abstract class CameraBase implements Camera.PreviewCallback {
 
     /**
      * 初始化Camera需要的数据
+     *
      * @param cameraID
-     * @param previewWidth NV21数据的宽
-     * @param previewHeight NV21数据的高
-     * @param canvasWidth 预览View的宽
-     * @param canvasHeight 预览View的高
+     * @param canvasWidth        预览View的宽
+     * @param canvasHeight       预览View的高
      * @param displayOrientation 画面显示的方向，以竖屏手机为例，0代表期望竖直显示画面，1代表逆时针旋转90度，以此类推
      * @param surfaceTexture
      * @param cameraListener
      */
     public void initCamera(
-              int cameraID
-            , int previewWidth
-            , int previewHeight
+            int cameraID
             , int canvasWidth
             , int canvasHeight
             , int displayOrientation
@@ -77,7 +68,10 @@ public abstract class CameraBase implements Camera.PreviewCallback {
             , @NonNull CameraListener cameraListener) {
         this.mCameraListener = cameraListener;
         this.mCameraId = cameraID;
-        mDisplayOrientation = displayOrientation;
+        this.mCanvasWidth = canvasWidth;
+        this.mCanvasHeight = canvasHeight;
+        this.mCanvasScale = mCanvasHeight * 1f / mCanvasWidth;
+        this.mDisplayOrientation = displayOrientation;
         if (mCamera != null) {
             destroyCamera();
         }
@@ -116,13 +110,13 @@ public abstract class CameraBase implements Camera.PreviewCallback {
         try {
             mCamera.setPreviewTexture(mSurfaceTexture);
             if (mPreviewBuffer == null) {
-                mPreviewBuffer = new byte[mPreviewWidth * mPreviewHeight * 3 / 2];
+                mPreviewBuffer = new byte[mNV21Width * mNV21Height * 3 / 2];
             }
-
-            mCamera.setPreviewCallback(this); // 设置预览的回调
-
+            mCamera.setPreviewCallbackWithBuffer(this);
+           // mCamera.setPreviewCallback(this); // 设置预览的回调
+            mCamera.addCallbackBuffer(mPreviewBuffer);
             mCamera.startPreview();
-            mCameraListener.onCameraOpened(null, mCameraId, mCameraClockwiseRotationValue, false);
+            mCameraListener.onCameraOpened(mNV21Width,mNV21Height,mCanvasWidth,mCanvasHeight, mCameraId, mCameraClockwiseRotationValue, false);
             return SUCCESS;
         } catch (IOException e) {
             e.printStackTrace();
@@ -160,10 +154,10 @@ public abstract class CameraBase implements Camera.PreviewCallback {
             mParameters.setPictureFormat(ImageFormat.JPEG); // 设置拍照图片格式
             mParameters.setExposureCompensation(0); // 设置曝光强度
             Camera.Size previewSize = getSuitableSize(mParameters.getSupportedPreviewSizes());
-            mPreviewWidth = previewSize.width;
-            mPreviewHeight = previewSize.height;
-            mParameters.setPreviewSize(mPreviewWidth, mPreviewHeight); // 设置预览图片大小
-            Log.d(TAG, "previewWidth: " + mPreviewWidth + ", previewHeight: " + mPreviewHeight);
+            mNV21Width = previewSize.width;
+            mNV21Height = previewSize.height;
+            mParameters.setPreviewSize(mNV21Width, mNV21Height); // 设置预览图片大小
+            Log.d(TAG, "previewWidth: " + mNV21Width + ", previewHeight: " + mNV21Height);
             Camera.Size pictureSize = getSuitableSize(mParameters.getSupportedPictureSizes());
             mParameters.setPictureSize(pictureSize.width, pictureSize.height);
             Log.d(TAG, "pictureWidth: " + pictureSize.width + ", pictureHeight: " + pictureSize.height);
@@ -177,13 +171,13 @@ public abstract class CameraBase implements Camera.PreviewCallback {
         int minDelta = Integer.MAX_VALUE; // 最小的差值，初始值应该设置大点保证之后的计算中会被重置
         int index = 0; // 最小的差值对应的索引坐标
         for (int i = 0; i < sizes.size(); i++) {
-            Camera.Size previewSize = sizes.get(i);
-            Log.v(TAG, "SupportedPreviewSize, width: " + previewSize.width + ", height: " + previewSize.height);
+            Camera.Size nv21Size = sizes.get(i);
+            Log.v(TAG, "SupportedPreviewSize, width: " + nv21Size.width + ", height: " + nv21Size.height);
             // 找到一个与设置的分辨率差值最小的相机支持的分辨率大小
-            if (previewSize.width * mPreviewScale == previewSize.height) {
-                int delta = Math.abs(mPreviewWidth - previewSize.width);
+            if (nv21Size.width * mCanvasScale == nv21Size.height) {
+                int delta = Math.abs(mNV21Width - nv21Size.width);
                 if (delta == 0) {
-                    return previewSize;
+                    return nv21Size;
                 }
                 if (minDelta > delta) {
                     minDelta = delta;
@@ -283,6 +277,23 @@ public abstract class CameraBase implements Camera.PreviewCallback {
 
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
-        mCameraListener.onPreview(data, camera);
+        camera.addCallbackBuffer(mPreviewBuffer);
+        mCameraListener.onPreview(data);
+    }
+
+    public int getNV21Width() {
+        return mNV21Width;
+    }
+
+    public int getNV21Height() {
+        return mNV21Height;
+    }
+
+    public int getCanvasWidth() {
+        return mCanvasWidth;
+    }
+
+    public int getCanvasHeight() {
+        return mCanvasHeight;
     }
 }

@@ -20,7 +20,7 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            abiFilters "arm64-v8a","armeabi-v7a"
+            abiFilters "arm64-v8a", "armeabi-v7a"
         }
     }
 
@@ -134,9 +134,17 @@ dependencies {
     implementation project(path: ':OpenFace')
     /*Room components*/
     implementation deps.room.runtime
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     kapt deps.room.compiler//room通过注解的方式编写代码，该库用来编译注解
     implementation deps.room.paging
     implementation deps.paging_runtime
+
+    implementation 'com.airbnb.android:lottie:3.2.2'
+
+    //zxing 扫码
+    implementation 'com.google.zxing:core:3.3.3'
+    implementation('com.journeyapps:zxing-android-embedded:3.6.0') { transitive = false }
     //单元测试
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'

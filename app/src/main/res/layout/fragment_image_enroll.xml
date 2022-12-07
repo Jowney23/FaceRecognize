@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    tools:context=".fragment.set.ImageEnrollFragment">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="建议待检测的图像人脸角度上、下、左、右转向小于30度；\n
+                      图像中人脸尺寸不小于50 x 50像素；\n
+                      图像大小小于10MB；\n
+                      图像清晰；" />
+    <!-- TODO: Update blank fragment layout -->
+    <Button
+        android:id="@+id/fie_enroll_bt"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:background="@drawable/bg_circle_bt"
+        android:elevation="30dp"
+        android:text="本地建模" />
+
+</LinearLayout>

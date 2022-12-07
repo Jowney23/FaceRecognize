@@ -16,5 +16,5 @@ public interface IFaceBusiness {
 
     void matchToOne();
 
-    void enrollFaceInfo(byte[] videoFrame ,FaceInfo faceInfo);
+    void enrollVideoFaceInfo(byte[] videoFrame , FaceInfo faceInfo);
 }

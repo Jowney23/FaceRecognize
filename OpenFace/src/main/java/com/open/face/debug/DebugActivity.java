@@ -10,10 +10,13 @@ import android.view.View;
 import androidx.annotation.Nullable;
 
 import com.hjq.toast.ToastUtils;
+import com.jowney.common.util.SoundPoolUtils;
 import com.jowney.common.util.logger.L;
 import com.open.face.R;
 import com.open.face.camera.ColorCamera;
 import com.open.face.core.ArcAlgorithmHelper;
+import com.open.face.core.FaceRecognizeThread;
+import com.open.face.core.IFaceBusiness;
 import com.open.face.model.EventTips;
 import com.open.face.model.TipMessageCode;
 import com.open.face.view.ColorPreviewTextureView;
@@ -22,6 +25,8 @@ import com.open.face.view.FaceCoveringCircleView;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+
+import java.util.ArrayList;
 
 /**
  * Created by Jowney on 2018/6/26.
@@ -43,16 +48,27 @@ public class DebugActivity extends Activity {
         ApplicationInfo applicationInfo = getApplicationInfo();
 
         ArcAlgorithmHelper.getInstance().initEngine(this);
+        ArcAlgorithmHelper.getInstance().loadAllFaceFeatureAsync();
+        FaceRecognizeThread faceRecognizeThread = new FaceRecognizeThread("gogo");
+        faceRecognizeThread.start();
         colorPreviewTextureView = findViewById(R.id.facerecognize_previewTextureView);
         faceCoveringView = findViewById(R.id.facerecognize_faceDetectionView);
         colorPreviewTextureView.setView(faceCoveringView);
+        SoundPoolUtils.getInstance().init(2);
+        ArrayList list = new ArrayList<Integer>();
+        list.add(R.raw.welcomehome);
+        list.add(R.raw.ding);
+        list.add(R.raw.registerok);
+        SoundPoolUtils.getInstance().loadSounds(list);
+
        /* FaceRecognizeThread tem = new FaceRecognizeThread("face_thread");
         tem.setView(faceDetectionView);
         tem.start();*/
         findViewById(R.id.facerecognize_bt).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ColorCamera.getInstance().switchCamera();
+                //   ColorCamera.getInstance().switchCamera();
+                faceRecognizeThread.setMode(IFaceBusiness.ENROLL_MODE);
             }
         });
       /*  int initOK = FsGrayRecognizeHelper.getInstance().initGrayRecognize();
@@ -93,7 +109,7 @@ public class DebugActivity extends Activity {
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void receiveMessageTip(EventTips eventTips) {
         switch (eventTips.getCode()) {
-            case TipMessageCode.MESSAGE_COLOR_FACERECOGNIZE_ERROR:
+            case TipMessageCode.MESSAGE_COLOR_RECOGNIZE_ERROR:
                 ToastUtils.show(eventTips.getData().toString());
                 break;
 
@@ -102,11 +118,12 @@ public class DebugActivity extends Activity {
         }
 
     }
+
     @Override
     protected void onResume() {
         super.onResume();
-      int pp =  ColorCamera.getInstance().startCamera();
-        L.v("打开摄像头的结果"+pp);
+        int pp = ColorCamera.getInstance().startCamera();
+        L.v("打开摄像头的结果" + pp);
     }
 
     @Override
@@ -114,7 +131,6 @@ public class DebugActivity extends Activity {
         super.onStop();
         ColorCamera.getInstance().stopCamera();
     }
-
 
 
     @Override

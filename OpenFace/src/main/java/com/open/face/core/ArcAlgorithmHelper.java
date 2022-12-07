@@ -3,8 +3,8 @@ package com.open.face.core;
 
 
 import android.content.Context;
-import android.nfc.Tag;
-import android.os.FileUtils;
+import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.util.Log;
 
 import com.arcsoft.face.ErrorInfo;
@@ -14,19 +14,26 @@ import com.arcsoft.face.FaceInfo;
 import com.arcsoft.face.FaceSimilar;
 import com.arcsoft.face.enums.DetectFaceOrientPriority;
 import com.arcsoft.face.enums.DetectMode;
+import com.arcsoft.imageutil.ArcSoftImageFormat;
+import com.arcsoft.imageutil.ArcSoftImageUtil;
+import com.arcsoft.imageutil.ArcSoftImageUtilError;
+import com.jowney.common.BaseApplication;
 import com.jowney.common.util.FileTool;
+import com.open.face.camera.ColorCamera;
 import com.open.face.model.EventTips;
 import com.open.face.model.TipMessageCode;
 
 import org.greenrobot.eventbus.EventBus;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 
 
 /**
@@ -49,45 +56,40 @@ import java.util.UUID;
 public class ArcAlgorithmHelper implements IAlgorithmHelper {
     private static final String TAG = "ArcAlgorithmHelper";
     private static ArcAlgorithmHelper mArcAlgorithmHelper = null;
-    private int mDetectHandle = -1;
-    private int mRecognizeHandle = -1;
-    private int mFaceFeatureLength = 0;//人脸模型长度
-    public static FaceInfo[] mFaceInfoArray;
     //该Map用来加载所有住户的特征值，key为特征值在本地保存的名称，value为特征值
     private static Map<String, byte[]> residentsFeatureGlobal = new HashMap<>();
     //应有的模版数量
-    private int templateCountGlobal;
+    private int featureCountGlobal;
     //实际加载的模版数量
-    private int loadedTemplateCountGlobal;
-
-    public static float[] similarity = new float[1];
-
-    public static String[] residentTmplateId = new String[1];
-
-    //................
-    private static final int MAX_DETECT_NUM = 10;
+    private int loadedFeatureCountGlobal;
+    //创建一个对象用于存储特征库中的特征，防止频繁创建对象
+    private FaceFeature oldFaceFeature = new FaceFeature();
+    private static final int MAX_DETECT_NUM = 2;
     /**
      * VIDEO模式人脸检测引擎，用于预览帧人脸追踪
      */
-    private FaceEngine ftEngine;
+    private FaceEngine fDetectEngine;
     /**
      * 用于特征提取的引擎
      */
-    private FaceEngine frEngine;
+    private FaceEngine fFeatureEngine;
     /**
      * IMAGE模式活体检测引擎，用于预览帧人脸活体检测
      */
-    private FaceEngine flEngine;
+    private FaceEngine fLiveEngine;
     /**
      * 人脸比对
+     * 该引擎同时也负责图片建模，因为图片人脸角度是0，该引擎设置的检测角度为0
+     * 角度设置对模型比对无影响
      */
-    private FaceEngine fcEngine;
+    private FaceEngine fCompareEngine;
 
-    private int ftInitCode = -1;
-    private int frInitCode = -1;
-    private int flInitCode = -1;
+    private int fDetectInitCode = -1;
+    private int fFeatureInitCode = -1;
+    private int fLiveInitCode = -1;
 
     public List<FaceInfo> faceInfoList = new ArrayList<>();
+    private IErrorCallBack iErrorCallBack;
 
     public static ArcAlgorithmHelper getInstance() {
         if (mArcAlgorithmHelper == null) {
@@ -96,37 +98,39 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
         return mArcAlgorithmHelper;
     }
 
+
     @Override
     public String initEngine(Context applicationContext) {
-        ftEngine = new FaceEngine();
-        ftInitCode = ftEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_VIDEO, DetectFaceOrientPriority.ASF_OP_270_ONLY,
+        //人脸追踪引擎
+        fDetectEngine = new FaceEngine();
+        fDetectInitCode = fDetectEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_VIDEO, DetectFaceOrientPriority.ASF_OP_270_ONLY,
                 16, MAX_DETECT_NUM, FaceEngine.ASF_FACE_DETECT);
-
-        frEngine = new FaceEngine();
-        frInitCode = frEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_IMAGE, DetectFaceOrientPriority.ASF_OP_0_ONLY,
+        //特征值提取引擎
+        fFeatureEngine = new FaceEngine();
+        fFeatureInitCode = fFeatureEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_IMAGE, DetectFaceOrientPriority.ASF_OP_270_ONLY,
                 16, MAX_DETECT_NUM, FaceEngine.ASF_FACE_RECOGNITION);
-
-        flEngine = new FaceEngine();
-        flInitCode = flEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_IMAGE, DetectFaceOrientPriority.ASF_OP_0_ONLY,
+        //活体检测引擎
+        fLiveEngine = new FaceEngine();
+        fLiveInitCode = fLiveEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_VIDEO, DetectFaceOrientPriority.ASF_OP_270_ONLY,
                 16, MAX_DETECT_NUM, FaceEngine.ASF_LIVENESS);
 
 
-        fcEngine = new FaceEngine();
-        int engineCode = fcEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_IMAGE, DetectFaceOrientPriority.ASF_OP_0_ONLY, 16, 1, FaceEngine.ASF_FACE_RECOGNITION | FaceEngine.ASF_FACE_DETECT);
+        fCompareEngine = new FaceEngine();
+        int engineCode = fCompareEngine.init(applicationContext, DetectMode.ASF_DETECT_MODE_IMAGE, DetectFaceOrientPriority.ASF_OP_0_ONLY, 16, 1, FaceEngine.ASF_FACE_RECOGNITION | FaceEngine.ASF_FACE_DETECT);
 
-        Log.i(TAG, "initEngine:  init: " + ftInitCode);
+        Log.i(TAG, "initEngine:  init: " + fDetectInitCode);
 
-        if (ftInitCode != ErrorInfo.MOK) {
+        if (fDetectInitCode != ErrorInfo.MOK) {
            /* String error = getString(R.string.specific_engine_init_failed, "ftEngine", ftInitCode);
             Log.i(TAG, "initEngine: " + error);
             showToast(error);*/
         }
-        if (frInitCode != ErrorInfo.MOK) {
+        if (fFeatureInitCode != ErrorInfo.MOK) {
            /* String error = getString(R.string.specific_engine_init_failed, "frEngine", frInitCode);
             Log.i(TAG, "initEngine: " + error);
             showToast(error);*/
         }
-        if (flInitCode != ErrorInfo.MOK) {
+        if (fLiveInitCode != ErrorInfo.MOK) {
            /* String error = getString(R.string.specific_engine_init_failed, "flEngine", flInitCode);
             Log.i(TAG, "initEngine: " + error);
             showToast(error);*/
@@ -134,16 +138,34 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
         return "";
     }
 
-
     @Override
-    public String enrollFaceFeature(byte[] srcVideoData, FaceInfo faceInfo) {
-        String ret = null;
+    public void activateAsync(String appId, String sdkKey, IActivateCallBack activateCallBack) {
+        Executors.newSingleThreadExecutor().execute(new Runnable() {
+            @Override
+            public void run() {
+                int activateCode = FaceEngine.activeOnline(
+                        BaseApplication.application,
+                        appId,
+                        sdkKey
+                );
+                activateCallBack.callback(activateCode);
+            }
+        });
+
+    }
+
+    /**
+     * 用于注册视频中人脸
+     */
+    @Override
+    public String enrollFaceFeatureNV21(byte[] srcVideoData, FaceInfo faceInfo) {
+        String ret;
         FaceFeature faceFeature = new FaceFeature();
         try {
             String newTemplateID = UUID.randomUUID().toString().replace("-", "");
             //提取视频流中人脸特征值(^*_*^)
             long frStartTime = System.currentTimeMillis();
-            int frCode = frEngine.extractFaceFeature(srcVideoData, 640, 480, FaceEngine.CP_PAF_NV21, faceInfo, faceFeature);
+            int frCode = fFeatureEngine.extractFaceFeature(srcVideoData, ColorCamera.getInstance().getNV21Width(), ColorCamera.getInstance().getNV21Height(), FaceEngine.CP_PAF_NV21, faceInfo, faceFeature);
             if (frCode == ErrorInfo.MOK) {
                 Log.i(TAG, "提取人脸特征耗时：" + (System.currentTimeMillis() - frStartTime) + "ms");
 
@@ -151,24 +173,88 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
                 return null;
             }
             if (FileTool.writeByteArrayToFile(CacheHelper.TEMPLATE_DB_PATH_DIR + "/" + newTemplateID, faceFeature.getFeatureData())) {
-                ret =  newTemplateID;
+                ret = newTemplateID;
             } else {
                 return null;
             }
 
             //内存保存一份
             residentsFeatureGlobal.put(newTemplateID, faceFeature.getFeatureData());
-            templateCountGlobal += 1;
-            loadedTemplateCountGlobal += 1;
-            EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + templateCountGlobal, TipMessageCode.MESSAGE_LOADT_TEMPLATE_START));
-            EventBus.getDefault().post(new EventTips<>("实际加载的模板数量：" + loadedTemplateCountGlobal, TipMessageCode.MESSAGE_LOADT_TEMPLATE_END));
+            featureCountGlobal += 1;
+            loadedFeatureCountGlobal += 1;
+            EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + featureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_START));
+            EventBus.getDefault().post(new EventTips<>("实际加载的模板数量：" + loadedFeatureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_END));
 
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
             return null;
         }
-        return  ret;
+        return ret;
+    }
+
+    /**
+     * 用于注册照片人脸
+     *
+     * @return 是否注册成功
+     */
+    @Override
+    public String enrollFaceFeatureBitmap(Bitmap bitmap) {
+        synchronized (this) {
+            if (bitmap == null) return "";
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+            if (width % 4 != 0 ) {
+                Log.e(TAG, "registerBgr24:  invalid params");
+                return null;
+            }
+            byte[] bgr24 = ArcSoftImageUtil.createImageData(bitmap.getWidth(), bitmap.getHeight(), ArcSoftImageFormat.BGR24);
+            int transformCode = ArcSoftImageUtil.bitmapToImageData(bitmap, bgr24, ArcSoftImageFormat.BGR24);
+            if (transformCode != ArcSoftImageUtilError.CODE_SUCCESS) return "";
+
+
+            String ret;
+            String newTemplateID = UUID.randomUUID().toString().replace("-", "");
+            long frStartTime = System.currentTimeMillis();
+            //人脸检测
+            List<FaceInfo> faceInfoList = new ArrayList<>();
+            int code = fCompareEngine.detectFaces(bgr24, width, height, FaceEngine.CP_PAF_BGR24, faceInfoList);
+            if (code == ErrorInfo.MOK && faceInfoList.size() > 0) {
+                FaceFeature faceFeature = new FaceFeature();
+                FaceInfo maxFaceInfo = faceInfoList.get(0);
+                for (FaceInfo faceInfo : faceInfoList) {
+                    if (faceInfo.getRect().width() > maxFaceInfo.getRect().width()) {
+                        maxFaceInfo = faceInfo;
+                    }
+                }
+                //特征提取
+                int frCode = fCompareEngine.extractFaceFeature(bgr24, width, height, FaceEngine.CP_PAF_BGR24, maxFaceInfo, faceFeature);
+                if (frCode == ErrorInfo.MOK) {
+                    Log.i(TAG, "图片->提取人脸特征耗时：" + (System.currentTimeMillis() - frStartTime) + "ms");
+
+                } else {
+                    return null;
+                }
+                if (FileTool.writeByteArrayToFile(CacheHelper.TEMPLATE_DB_PATH_DIR + "/" + newTemplateID, faceFeature.getFeatureData())) {
+                    ret = newTemplateID;
+                } else {
+                    return null;
+                }
+
+                //内存保存一份
+                residentsFeatureGlobal.put(newTemplateID, faceFeature.getFeatureData());
+                featureCountGlobal += 1;
+                loadedFeatureCountGlobal += 1;
+                EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + featureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_START));
+                EventBus.getDefault().post(new EventTips<>("实际加载的模板数量：" + loadedFeatureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_END));
+
+            } else {
+                Log.e(TAG, "registerBgr24: no face detected, code is " + code);
+                return "";
+            }
+            return ret;
+        }
+
     }
 
     @Override
@@ -208,77 +294,141 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
         return ret;*/
     }
 
+    public void loadAllFaceFeatureSync() {
+        String[] mTemplateNames;
+        //应有的模版数量
+        featureCountGlobal = 0;
+        //实际加载的模版数量
+        loadedFeatureCountGlobal = 0;
+        int version = 0;
+        Boolean vnRet;
+        //初始化文件
+        File mDir = new File(CacheHelper.INIT_DATA_PATH_DIR);//YZ文件夹
+        if (!mDir.isDirectory() && !mDir.mkdir()) return;
+
+
+        File mTemplateDir = new File(CacheHelper.TEMPLATE_DB_PATH_DIR);//模版文件夹
+        if (!mTemplateDir.isDirectory() && !mTemplateDir.mkdir()) return;
+
+
+        //获取所有模版的名字,名字就是改模板的ID，所以名字要用数字
+        mTemplateNames = mTemplateDir.list();
+        //模板的数量
+        featureCountGlobal = mTemplateNames.length;
+        EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + featureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_START));
+        for (String mTemplateName : mTemplateNames) {
+            byte[] feature = new byte[FaceFeature.FEATURE_SIZE];
+            //将每个模板都加载到内存中。某个模板在加载的过程中可能会出现异常，异常如果出现就重新加载这个模板
+
+            try {
+                if (mTemplateName.contains("-")) {
+                    version = Integer.valueOf(mTemplateName.split("-")[0]);
+                } else {
+                    version = 0;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+
+            }
+
+            if (version != CacheHelper.TEMPLATE_VERSION) {
+                //TODO: 2018/7/6 提示模版需要升级
+                break;
+            }
+            //加载模板
+            try {
+                Log.i("wxy", "本地加载run: 人脸模板长度：" + FaceFeature.FEATURE_SIZE);
+                vnRet = FileTool.readByteArrayFromFile(CacheHelper.TEMPLATE_DB_PATH_DIR + "/" + mTemplateName, feature, FaceFeature.FEATURE_SIZE);
+                if (vnRet) {
+                    residentsFeatureGlobal.put(mTemplateName, feature);
+                } else {
+                    //  LogUtils.v("卧槽！模板号为：" + mTemplateName + " 的老兄模板加载失败了");
+                    continue;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                // TODO: 2018/7/6 如果有人的模板为空应该提示
+                Log.v(TAG, "卧槽！模板号为：" + mTemplateName + "的老兄加载时发生了异常");
+                continue;
+            }
+            //模版加载成功后 跳出循环 继续下一个
+            loadedFeatureCountGlobal++;
+
+        }
+        // TODO: 2018/7/6  显示实际加载的模版数量loadedTemplateCount
+        EventBus.getDefault().post(new EventTips<>("实际加载的模板数量：" + loadedFeatureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_END));
+    }
+
     @Override
-    public void loadAllFaceFeature() {
+    public void loadAllFaceFeatureAsync() {
         //加载所有模版数据
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                String[] mTemplateNames;
-                //应有的模版数量
-                templateCountGlobal = 0;
-                //实际加载的模版数量
-                loadedTemplateCountGlobal = 0;
-                int version = 0;
-                Boolean vnRet;
-                //初始化文件
-                File mDir = new File(CacheHelper.INIT_DATA_PATH_DIR);//YZ文件夹
-                if (!mDir.isDirectory() && !mDir.mkdir()) return;
+        Executors.newSingleThreadExecutor().execute(
+                () -> {
+                    String[] mTemplateNames;
+                    //应有的模版数量
+                    featureCountGlobal = 0;
+                    //实际加载的模版数量
+                    loadedFeatureCountGlobal = 0;
+                    int version = 0;
+                    Boolean vnRet;
+                    //初始化文件
+                    File mDir = new File(CacheHelper.INIT_DATA_PATH_DIR);//YZ文件夹
+                    if (!mDir.isDirectory() && !mDir.mkdir()) return;
 
 
-                File mTemplateDir = new File(CacheHelper.TEMPLATE_DB_PATH_DIR);//模版文件夹
-                if (!mTemplateDir.isDirectory() && !mTemplateDir.mkdir()) return;
+                    File mTemplateDir = new File(CacheHelper.TEMPLATE_DB_PATH_DIR);//模版文件夹
+                    if (!mTemplateDir.isDirectory() && !mTemplateDir.mkdir()) return;
 
 
-                //获取所有模版的名字,名字就是改模板的ID，所以名字要用数字
-                mTemplateNames = mTemplateDir.list();
-                //模板的数量
-                templateCountGlobal = mTemplateNames.length;
-                EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + templateCountGlobal, TipMessageCode.MESSAGE_LOADT_TEMPLATE_START));
-                for (String mTemplateName : mTemplateNames) {
-                    byte[] feature = new byte[mFaceFeatureLength];
-                    //将每个模板都加载到内存中。某个模板在加载的过程中可能会出现异常，异常如果出现就重新加载这个模板
+                    //获取所有模版的名字,名字就是改模板的ID，所以名字要用数字
+                    mTemplateNames = mTemplateDir.list();
+                    //模板的数量
+                    featureCountGlobal = mTemplateNames.length;
+                    EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + featureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_START));
+                    for (String mTemplateName : mTemplateNames) {
+                        byte[] feature = new byte[FaceFeature.FEATURE_SIZE];
+                        //将每个模板都加载到内存中。某个模板在加载的过程中可能会出现异常，异常如果出现就重新加载这个模板
 
-                    try {
-                        if (mTemplateName.contains("-")) {
-                            version = Integer.valueOf(mTemplateName.split("-")[0]);
-                        } else {
-                            version = 0;
+                        try {
+                            if (mTemplateName.contains("-")) {
+                                version = Integer.valueOf(mTemplateName.split("-")[0]);
+                            } else {
+                                version = 0;
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
 
-                    }
-
-                    if (version != CacheHelper.TEMPLATE_VERSION) {
-                        //TODO: 2018/7/6 提示模版需要升级
-                        break;
-                    }
-                    //加载模板
-                    try {
-                        Log.i("wxy", "本地加载run: 人脸模板长度：" + mFaceFeatureLength);
-                        vnRet = FileTool.readByteArrayFromFile(CacheHelper.TEMPLATE_DB_PATH_DIR + "/" + mTemplateName, feature, mFaceFeatureLength);
-                        if (vnRet) {
-                            residentsFeatureGlobal.put(mTemplateName, feature);
-                        } else {
-                            //  LogUtils.v("卧槽！模板号为：" + mTemplateName + " 的老兄模板加载失败了");
+                        if (version != CacheHelper.TEMPLATE_VERSION) {
+                            //TODO: 2018/7/6 提示模版需要升级
+                            break;
+                        }
+                        //加载模板
+                        try {
+                            Log.i("wxy", "本地加载run: 人脸模板长度：" + FaceFeature.FEATURE_SIZE);
+                            vnRet = FileTool.readByteArrayFromFile(CacheHelper.TEMPLATE_DB_PATH_DIR + "/" + mTemplateName, feature, FaceFeature.FEATURE_SIZE);
+                            if (vnRet) {
+                                residentsFeatureGlobal.put(mTemplateName, feature);
+                            } else {
+                                //  LogUtils.v("卧槽！模板号为：" + mTemplateName + " 的老兄模板加载失败了");
+                                continue;
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            // TODO: 2018/7/6 如果有人的模板为空应该提示
+                            Log.v(TAG, "卧槽！模板号为：" + mTemplateName + "的老兄加载时发生了异常");
                             continue;
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        // TODO: 2018/7/6 如果有人的模板为空应该提示
-                        Log.v(TAG, "卧槽！模板号为：" + mTemplateName + "的老兄加载时发生了异常");
-                        continue;
-                    }
-                    //模版加载成功后 跳出循环 继续下一个
-                    loadedTemplateCountGlobal++;
+                        //模版加载成功后 跳出循环 继续下一个
+                        loadedFeatureCountGlobal++;
 
+                    }
+                    // TODO: 2018/7/6  显示实际加载的模版数量loadedTemplateCount
+                    EventBus.getDefault().post(new EventTips<>("实际加载的模板数量：" + loadedFeatureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_END));
                 }
-                // TODO: 2018/7/6  显示实际加载的模版数量loadedTemplateCount
-                EventBus.getDefault().post(new EventTips<>("实际加载的模板数量：" + loadedTemplateCountGlobal, TipMessageCode.MESSAGE_LOADT_TEMPLATE_END));
-            }
-        }).start();
+        );
+
     }
 
     @Override
@@ -288,19 +438,18 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
 
     /**
      * 人脸检测建议在Camera回调函数中执行
+     *
      * @param nv21
      * @return
      */
     @Override
-    public FaceInfo detectFace(byte[] nv21) {
+    public FaceInfo detectMaxFace(byte[] nv21) {
         long ftStartTime = System.currentTimeMillis();
         //detectFaces内部有调用faceInfoList的clear
-        int code = ftEngine.detectFaces(nv21, 640, 480, FaceEngine.CP_PAF_NV21, faceInfoList);
+        int code = fDetectEngine.detectFaces(nv21, ColorCamera.getInstance().getNV21Width(), ColorCamera.getInstance().getNV21Height(), FaceEngine.CP_PAF_NV21, faceInfoList);
         if (code == ErrorInfo.MOK) {
-         //   Log.i(TAG, "人脸检测耗时: " + (System.currentTimeMillis() - ftStartTime) + "ms");
-
         } else {
-         //   Log.v(TAG,"错误码："+code);
+            //   Log.v(TAG,"错误码："+code);
             return null;
         }
         //只保留最大人脸信息
@@ -313,9 +462,9 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
                 maxFaceInfo = faceInfo;
             }
         }
+        //  Log.i(TAG, "人脸检测耗时: " + (System.currentTimeMillis() - ftStartTime) + "ms");
         return maxFaceInfo;
     }
-
 
     /**
      * 1:N
@@ -323,37 +472,38 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
      * @return
      */
     @Override
-    public boolean identifyFaceFeature(byte[] videoFrame,FaceInfo faceInfo) {
-        float similarityTem = 0;
+    public String identifyFaceFeature(byte[] videoFrame, FaceInfo faceInfo) {
         //第一步生成特征值
-        FaceFeature tempFaceFeature = new FaceFeature();
+        String residentFeatureIdTem = null;
+        float similarityTem = 0;
+        FaceFeature newFaceFeature = new FaceFeature();
         FaceSimilar faceSimilar = new FaceSimilar();
-        Log.v(TAG, "开始1：N");
-        int frCode = frEngine.extractFaceFeature(videoFrame, 640, 480, FaceEngine.CP_PAF_NV21, faceInfo, tempFaceFeature);
+        // Log.v(TAG, "开始1：N");
+        int frCode = fFeatureEngine.extractFaceFeature(videoFrame, ColorCamera.getInstance().getNV21Width(), ColorCamera.getInstance().getNV21Height(), FaceEngine.CP_PAF_NV21, faceInfo, newFaceFeature);
         if (frCode == ErrorInfo.MOK) {
 
         } else {
 
         }
         //第二步存储住户模版的residentsFeature中去比对
-        Map.Entry<String, byte[]> entry;
-        Iterator<Map.Entry<String, byte[]>> residentIterator = residentsFeatureGlobal.entrySet().iterator();
-        while (residentIterator.hasNext()) {
-            entry = residentIterator.next();
-            fcEngine.compareFaceFeature(tempFaceFeature, new FaceFeature(entry.getValue()), faceSimilar);
-            //   FaceRecog.cwComputeMatchScore(mRecognizeHandle, feature, entry.getValue(), 1, similarity);
-            Log.v(TAG, "比对份数：" + faceSimilar.getScore());
+        for (Map.Entry<String, byte[]> entry : residentsFeatureGlobal.entrySet()) {
+            oldFaceFeature.setFeatureData(entry.getValue());
+            fCompareEngine.compareFaceFeature(newFaceFeature, oldFaceFeature, faceSimilar);
+            Log.v(TAG, "匹配中分数：" + faceSimilar.getScore());
             if (faceSimilar.getScore() > similarityTem) {
                 similarityTem = faceSimilar.getScore();
-                residentTmplateId[0] = entry.getKey();
+                residentFeatureIdTem = entry.getKey();
+                //没有将库中数据全部匹配完，但是分数达到阈值了，直接返回
+                if (similarityTem >= CacheHelper.RECOGNIZE_THRESHOLD_VALUE)
+                    return residentFeatureIdTem;
             }
         }
 
         if (similarityTem >= CacheHelper.RECOGNIZE_THRESHOLD_VALUE) {
-            Log.v(TAG, "比对份数：" + similarity[0]);
-            return true;
+            //  Log.v(TAG, "匹配成功份数：" + similarityTem);
+            return residentFeatureIdTem;
         } else {
-            return false;
+            return null;
         }
     }
 
@@ -371,29 +521,28 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
 
     @Override
     public void unInitEngine() {
-        if (ftInitCode == ErrorInfo.MOK && ftEngine != null) {
-            synchronized (ftEngine) {
-                int ftUnInitCode = ftEngine.unInit();
+        if (fDetectInitCode == ErrorInfo.MOK && fDetectEngine != null) {
+            synchronized (fDetectEngine) {
+                int ftUnInitCode = fDetectEngine.unInit();
                 Log.i(TAG, "unInitEngine: " + ftUnInitCode);
             }
         }
-        if (frInitCode == ErrorInfo.MOK && frEngine != null) {
-            synchronized (frEngine) {
-                int frUnInitCode = frEngine.unInit();
+        if (fFeatureInitCode == ErrorInfo.MOK && fFeatureEngine != null) {
+            synchronized (fFeatureEngine) {
+                int frUnInitCode = fFeatureEngine.unInit();
                 Log.i(TAG, "unInitEngine: " + frUnInitCode);
             }
         }
-        if (flInitCode == ErrorInfo.MOK && flEngine != null) {
-            synchronized (flEngine) {
-                int flUnInitCode = flEngine.unInit();
+        if (fLiveInitCode == ErrorInfo.MOK && fLiveEngine != null) {
+            synchronized (fLiveEngine) {
+                int flUnInitCode = fLiveEngine.unInit();
                 Log.i(TAG, "unInitEngine: " + flUnInitCode);
             }
         }
     }
 
     @Override
-    public String switchErrorReason(int flag) {
-        return null;
+    public void setErrorCallBack(IErrorCallBack iErrorCallBack) {
+        this.iErrorCallBack = iErrorCallBack;
     }
-
 }

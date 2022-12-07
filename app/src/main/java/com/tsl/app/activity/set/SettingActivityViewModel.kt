@@ -1,10 +1,10 @@
-package com.tsl.app.activity.show
+package com.tsl.app.activity.set
 
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.tsl.app.widget.BottomShowPopup
 
-class ShowActivityViewModel : ViewModel() {
+class SettingActivityViewModel : ViewModel() {
     private var mBottomShowPopup: MutableLiveData<BottomShowPopup> = MutableLiveData<BottomShowPopup>()
     fun setBottomPopup(bottomShowPopup: BottomShowPopup) {
         mBottomShowPopup.value = bottomShowPopup

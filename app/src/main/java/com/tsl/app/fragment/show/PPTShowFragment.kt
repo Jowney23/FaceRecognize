@@ -12,7 +12,7 @@ import androidx.navigation.findNavController
 import com.jowney.common.widget.banner.Banner
 import com.jowney.common.widget.banner.transformer.AlphaPageTransformer
 import com.tsl.app.R
-import com.tsl.app.activity.show.ShowActivityViewModel
+import com.tsl.app.activity.set.SettingActivityViewModel
 import com.tsl.app.adapter.ImageBannerAdapter
 import com.tsl.app.bean.DataBean
 import kotlinx.android.synthetic.main.fragment_p_p_t_show.view.*
@@ -40,7 +40,7 @@ class PPTShowFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         var view = inflater.inflate(R.layout.fragment_p_p_t_show, container, false)
-        var model: ShowActivityViewModel = ViewModelProvider(requireActivity()).get(ShowActivityViewModel::class.java)
+        var model: SettingActivityViewModel = ViewModelProvider(requireActivity()).get(SettingActivityViewModel::class.java)
         val nav: NavController? = requireActivity().findNavController(R.id.widget_sa_nav_host_fragment)
 
         //(可以和其他PageTransformer组合使用，比如AlphaPageTransformer，注意但和其他带有缩放的PageTransformer会显示冲突)

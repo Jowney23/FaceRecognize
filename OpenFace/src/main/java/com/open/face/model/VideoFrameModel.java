@@ -1,8 +1,10 @@
 package com.open.face.model;
 
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import com.arcsoft.face.FaceInfo;
+import com.jowney.common.util.logger.L;
+
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Creator: Jowney  (~._.~)
@@ -11,22 +13,38 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 
 public class VideoFrameModel {
-    private static byte[] videoFrameData;
-    private static Lock lock = new ReentrantLock();
 
-    public static synchronized void addVideoFrame(byte[] byteArray) {
+    private static ConcurrentLinkedQueue<VideoFrame> mVideoFrameQueue = new ConcurrentLinkedQueue<>();
 
-        videoFrameData = byteArray;
-
-    }
-
-    public static synchronized byte[] getVideoFrame() {
-
-        return videoFrameData;
+    public static void addVideoFrame(byte[] byteArray, FaceInfo faceInfo) {
+        if (byteArray != null && faceInfo != null && mVideoFrameQueue.isEmpty()) {
+            mVideoFrameQueue.add(new VideoFrame(byteArray.clone(), faceInfo.clone()));
+        }
 
     }
 
+    public static VideoFrame getVideoFrame() {
+        return mVideoFrameQueue.poll();
 
+    }
+
+    public static class VideoFrame {
+        private byte[] mVideoFrameData;
+        private FaceInfo mFaceInfo;
+
+        public VideoFrame(byte[] mVideoFrameData, FaceInfo mFaceInfo) {
+            this.mVideoFrameData = mVideoFrameData;
+            this.mFaceInfo = mFaceInfo;
+        }
+
+        public byte[] getVideoFrameData() {
+            return mVideoFrameData;
+        }
+
+        public FaceInfo getFaceInfo() {
+            return mFaceInfo;
+        }
+    }
 
 
 

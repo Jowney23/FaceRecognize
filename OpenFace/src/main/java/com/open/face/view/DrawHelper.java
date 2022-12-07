@@ -7,15 +7,15 @@ import android.hardware.Camera;
  * 绘制人脸框帮助类
  */
 public class DrawHelper {
-    private static int previewWidth, previewHeight, canvasWidth, canvasHeight, cameraDisplayOrientation, cameraId;
+    private static int nv21Width, nv21wHeight, canvasWidth, canvasHeight, cameraDisplayOrientation, cameraId;
     private static boolean isMirror;
     private static boolean mirrorHorizontal = false, mirrorVertical = false;
 
     /**
      * 创建一个绘制辅助类对象，并且设置绘制相关的参数
      *
-     * @param previewWidth             预览宽度
-     * @param previewHeight            预览高度
+     * @param nv21Width             预览宽度
+     * @param nv21Height            预览高度
      * @param canvasWidth              绘制控件的宽度
      * @param canvasHeight             绘制控件的高度
      * @param cameraDisplayOrientation 旋转角度    mCamera.setDisplayOrientation(cameraDisplayOrientation);
@@ -24,11 +24,11 @@ public class DrawHelper {
      * @param mirrorHorizontal         为兼容部分设备使用，水平再次镜像
      * @param mirrorVertical           为兼容部分设备使用，垂直再次镜像
      */
-    public static void init(int previewWidth, int previewHeight, int canvasWidth,
+    public static void init(int nv21Width, int nv21Height, int canvasWidth,
                             int canvasHeight, int cameraDisplayOrientation, int cameraId,
                             boolean isMirror, boolean mirrorHorizontal, boolean mirrorVertical) {
-        DrawHelper.previewWidth = previewWidth;
-        DrawHelper.previewHeight = previewHeight;
+        DrawHelper.nv21Width = nv21Width;
+        DrawHelper.nv21wHeight = nv21Height;
         DrawHelper.canvasWidth = canvasWidth;
         DrawHelper.canvasHeight = canvasHeight;
         DrawHelper.cameraDisplayOrientation = cameraDisplayOrientation;
@@ -46,8 +46,8 @@ public class DrawHelper {
      * @return 调整后的需要被绘制到View上的rect
      */
     public static Rect adjustRect(Rect ftRect) {
-        int previewWidth = DrawHelper.previewWidth;
-        int previewHeight = DrawHelper.previewHeight;
+        int previewWidth = DrawHelper.nv21Width;
+        int previewHeight = DrawHelper.nv21wHeight;
         int canvasWidth = DrawHelper.canvasWidth;
         int canvasHeight = DrawHelper.canvasHeight;
         int cameraDisplayOrientation = DrawHelper.cameraDisplayOrientation;

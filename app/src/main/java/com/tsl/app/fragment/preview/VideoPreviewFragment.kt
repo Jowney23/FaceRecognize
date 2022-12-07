@@ -15,7 +15,7 @@ import com.lxj.easyadapter.EasyAdapter
 import com.lxj.easyadapter.MultiItemTypeAdapter
 import com.lxj.easyadapter.ViewHolder
 import com.tsl.app.R
-import com.tsl.app.activity.show.ShowActivityViewModel
+import com.tsl.app.activity.set.SettingActivityViewModel
 import kotlinx.android.synthetic.main.fragment_video_preview.view.*
 
 
@@ -35,7 +35,7 @@ class VideoPreviewFragment : BasePreviewFragment() {
     private val mViewHolderList: MutableList<ViewHolder> = ArrayList()
     private var mResourceCounts: Int = 0
     private var mNav: NavController? = null
-    private lateinit var mModel: ShowActivityViewModel
+    private lateinit var mModel: SettingActivityViewModel
 
     override
 
@@ -56,7 +56,7 @@ class VideoPreviewFragment : BasePreviewFragment() {
         mNav =
             requireActivity().findNavController(R.id.widget_sa_nav_host_fragment)
         mModel =
-            ViewModelProvider(requireActivity()).get(ShowActivityViewModel::class.java)
+            ViewModelProvider(requireActivity()).get(SettingActivityViewModel::class.java)
 
         mRv = mView.widget_vpf_rv
 

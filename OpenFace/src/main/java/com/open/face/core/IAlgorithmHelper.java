@@ -1,6 +1,7 @@
 package com.open.face.core;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Environment;
 
 import com.arcsoft.face.FaceInfo;
@@ -12,6 +13,7 @@ import com.arcsoft.face.FaceInfo;
  */
 public interface IAlgorithmHelper {
 
+    void activateAsync(String appId, String sdkKey, IActivateCallBack callBack);
 
     /**
      * 初始化算法
@@ -27,7 +29,9 @@ public interface IAlgorithmHelper {
      * @param srcVideoData
      * @return
      */
-    String enrollFaceFeature(byte[] srcVideoData, FaceInfo faceInfo);
+    String enrollFaceFeatureNV21(byte[] srcVideoData, FaceInfo faceInfo);
+
+    String enrollFaceFeatureBitmap(Bitmap bitmap);
 
     /**
      * 更新本地模板
@@ -39,7 +43,7 @@ public interface IAlgorithmHelper {
     /**
      * 加载本地人脸模板，1：N时使用
      */
-    void loadAllFaceFeature();
+    void loadAllFaceFeatureAsync();
 
     /**
      * 删除模板
@@ -52,7 +56,7 @@ public interface IAlgorithmHelper {
      * @param videoPicture
      * @return 人脸个数
      */
-    FaceInfo detectFace(byte[] videoPicture);
+    FaceInfo detectMaxFace(byte[] videoPicture);
 
     /**
      * 1：N
@@ -60,7 +64,7 @@ public interface IAlgorithmHelper {
      * @return
      */
 
-    boolean identifyFaceFeature(byte[] videoFrame,FaceInfo faceInfo);
+    String identifyFaceFeature(byte[] videoFrame, FaceInfo faceInfo);
 
     /**
      * 1:1
@@ -77,10 +81,17 @@ public interface IAlgorithmHelper {
     void unInitEngine();
 
     /**
-     * 错误信息
+     * 错误信息回调
      *
-     * @param flag
      * @return
      */
-    String switchErrorReason(int flag);
+    void setErrorCallBack(IErrorCallBack iErrorCallBack);
+}
+
+interface IActivateCallBack {
+    void callback(int code);
+}
+
+interface IErrorCallBack {
+    void algorithmHelperError(String message);
 }

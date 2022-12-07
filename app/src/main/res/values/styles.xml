@@ -1,18 +1,28 @@
 <resources>
 
     <style name="AppTheme" parent="AppBaseTheme" />
+
+    <style name="SplashActivityTheme" parent="ActivityBaseTheme" />
     <!-- Base application theme. -->
     <style name="AppBaseTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Customize theme here. -->
         <!-- titlbar颜色也叫actionbar-->
         <item name="colorPrimary">@color/app_colorPrimary</item>
         <!-- statusbar颜色-->
-        <!-- 设置为透明为了闪屏界面，后面需要的颜色的时候再设置-->
         <item name="colorPrimaryDark">@color/app_colorTransparent</item>
-
         <item name="colorAccent">@color/app_colorAccent</item>
+    </style>
+    <!-- Base application theme. -->
+    <style name="ActivityBaseTheme" parent="AnimationActivity">
         <!--解决首屏启动白屏-->
-        <item name="android:windowBackground">@color/app_colorBlue</item>
+        <item name="android:windowBackground">@drawable/bg_splash_activiy</item>
+    </style>
+
+    <style name="AnimationActivity" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowActivityTransitions">true</item>
+        <!-- specify enter and exit transitions -->
+        <item name="android:windowEnterTransition">@transition/fade_transition</item>
+        <item name="android:windowExitTransition">@transition/fade_transition</item>
     </style>
 
     <style name="MyTablayoutstyle" parent="Base.Widget.Design.TabLayout">

@@ -13,7 +13,7 @@ import com.jowney.player.player.AndroidMediaPlayer
 import com.jowney.player.ui.VideoView
 import com.jowney.player.ui.StandardVideoController
 import com.tsl.app.R
-import com.tsl.app.activity.show.ShowActivityViewModel
+import com.tsl.app.activity.set.SettingActivityViewModel
 import kotlinx.android.synthetic.main.fragment_video_show.view.*
 
 
@@ -44,7 +44,7 @@ class VideoShowFragment : Fragment() {
         mView = inflater.inflate(R.layout.fragment_video_show, container, false)
         val nav: NavController =
             requireActivity().findNavController(R.id.widget_sa_nav_host_fragment)
-        val model = ViewModelProvider(requireActivity()).get(ShowActivityViewModel::class.java)
+        val model = ViewModelProvider(requireActivity()).get(SettingActivityViewModel::class.java)
         mVideoView = mView.widget_vsf_videoview as VideoView<AndroidMediaPlayer>
         mStandardVideoController = StandardVideoController(requireContext())
         mStandardVideoController.addDefaultControlComponent("投名状", false)

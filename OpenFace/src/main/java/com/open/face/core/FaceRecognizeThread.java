@@ -1,6 +1,5 @@
 package com.open.face.core;
 
-import android.graphics.Rect;
 import android.util.Log;
 
 
@@ -10,8 +9,6 @@ import com.open.face.R;
 import com.open.face.model.EventTips;
 import com.open.face.model.TipMessageCode;
 import com.open.face.model.VideoFrameModel;
-import com.open.face.view.DrawHelper;
-import com.open.face.view.FaceCoveringRectangleView;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -22,20 +19,12 @@ import org.greenrobot.eventbus.EventBus;
 
 public class FaceRecognizeThread extends BaseThread {
     private static final String TAG = "FaceRecognizeThread";
-    private FaceCoveringRectangleView faceCoveringRectangleView;
-
-    private int bgrBytesLength = 640 * 480 * 3 / 2;
-    private byte[] videoBGRForFaceCheck = new byte[bgrBytesLength];
-    private int videoFaceCount;
-    private long lastCheckFaceTime;
-    //时隔多少毫秒检测一次人脸ms
-    private int checkFaceInterval = 20;
-    private boolean isCheckedFace;
+    VideoFrameModel.VideoFrame mVideoFrame;
     //通过该标记位切换比对模式,默认1：N模式
-    private int flagMode = IFaceBusiness.MATCH_TO_N_MODE;
+    private volatile int flagMode = IFaceBusiness.MATCH_TO_N_MODE;
     private long lastMatchOkTime;
     //上次比对与本次比对至少相隔matchFaceInterval毫秒
-    private int matchFaceInterval = 1500;
+    private final int matchFaceInterval = 1500;
     private IAlgorithmHelper iAlgorithmHelper = ArcAlgorithmHelper.getInstance();
 
     /**
@@ -59,11 +48,12 @@ public class FaceRecognizeThread extends BaseThread {
                     return;
                 }
 
-                //  boolean vnRet = FsColorRecognizeHelper.getInstance().identifyFace(videoBGRForFaceCheck, FsColorRecognizeHelper.videoBitmapW, FsColorRecognizeHelper.videoBitmapH, FsColorRecognizeHelper.similarity, FsColorRecognizeHelper.residentTmplateId);
-                boolean vnRet = iAlgorithmHelper.identifyFaceFeature(videoFrame, faceInfo);
+                String vnRet = iAlgorithmHelper.identifyFaceFeature(videoFrame, faceInfo);
                 //匹配到你了哦！（^*_*^）
-                if (vnRet) {
+                if (vnRet != null) {
                     lastMatchOkTime = System.currentTimeMillis();
+                    SoundPoolUtils.getInstance().play(R.raw.ding);
+
                     EventBus.getDefault().post(new EventTips<>("您已注册", TipMessageCode.MESSAGE_COLOR_1_N_SUCCESS));
                  /*   ModelFactory.createDataSource().queryResidentByTemplateId(Long.valueOf(FsColorRecognizeHelper.residentTmplateId[0]))
                             .subscribe(new Consumer<List<Resident>>() {
@@ -79,10 +69,7 @@ public class FaceRecognizeThread extends BaseThread {
 
                                 }
                             });*/
-
-
                 }
-                //
             }
 
             @Override
@@ -91,15 +78,16 @@ public class FaceRecognizeThread extends BaseThread {
             }
 
             @Override
-            public void enrollFaceInfo(byte[] videoFrame, FaceInfo faceInfo) {
+            public void enrollVideoFaceInfo(byte[] videoFrame, FaceInfo faceInfo) {
                 //现在是建模模式哦亲╭(╯3╰)╮
-                final String vnRet = iAlgorithmHelper.enrollFaceFeature(videoFrame, faceInfo);//成功返回模板号
+                final String vnRet = iAlgorithmHelper.enrollFaceFeatureNV21(videoFrame, faceInfo);//成功返回模板号
                 if (vnRet != null) {
-                    SoundPoolUtils.getInstance().play(R.raw.ding);
-                    flagMode = IFaceBusiness.MATCH_TO_N_MODE;
+                    SoundPoolUtils.getInstance().play(R.raw.registerok);
                 } else {
+                    SoundPoolUtils.getInstance().play(R.raw.ding);
                     Log.i(TAG, "enrollFaceInfor: 建模失败");
                 }
+                flagMode = IFaceBusiness.MATCH_TO_N_MODE;
         /*        //查找未注销的居民信息
                 ModelFactory.createDataSource().queryUnlogoutFkjResidentByCardNO(IdCardBean.identity).subscribe(new Consumer<List<Resident>>() {
                     @Override
@@ -128,8 +116,6 @@ public class FaceRecognizeThread extends BaseThread {
                 });*/
             }
         });
-
-
     }
 
 
@@ -139,71 +125,26 @@ public class FaceRecognizeThread extends BaseThread {
      *                      3、若读到身份证信息则使用1:1。使用完1:1后记得要修改flagForMatchMode重新回到1:N模式
      */
     private void faceRecognize(final IFaceBusiness iFaceBusiness) {
-        FaceInfo maxFaceInfo = null;
-        //时隔checkFaceInterval检测人脸(^_^)
-        /*if (System.currentTimeMillis() - lastCheckFaceTime < checkFaceInterval) {
-            return;
-        }*/
-        lastCheckFaceTime = System.currentTimeMillis();
-        try {
-
-            videoBGRForFaceCheck = VideoFrameModel.getVideoFrame();
-            if (videoBGRForFaceCheck == null) {
-                /*faceDetectionView.setRect(0, 0, 0, 0);
-                faceDetectionView.postInvalidate();*/
-                return;
-            }
-            videoFaceCount = 1;
-            maxFaceInfo = iAlgorithmHelper.detectFace(videoBGRForFaceCheck);
-            //   Log.i(TAG, "faceRecognize: "+maxFaceInfo.toString());
-
-        } catch (Exception e) {
-            //     Log.v(TAG, "出错了！"+e.getMessage());
-        }
-        if (maxFaceInfo != null) {
-            //检测到人脸了哦(^_^)
-            isCheckedFace = true;
-            //找出最大人脸
-            // TODO: 2019/5/11  最大人脸功能未实现
-            //  getMaxFacePoint();
-
-            //开始画人脸框了哦(^_^)
-            Rect ret = DrawHelper.adjustRect(maxFaceInfo.getRect());
-            faceCoveringRectangleView.setRect(ret.left +50, ret.top +50, ret.right -ret.left -100, ret.bottom - ret.top-100);
-
-            faceCoveringRectangleView.postInvalidate();
+        mVideoFrame = VideoFrameModel.getVideoFrame();
+        if (mVideoFrame != null) {
             //选择比对模式哦！（^*_*^）
             switch (flagMode) {
                 case IFaceBusiness.MATCH_TO_N_MODE:
-                    iFaceBusiness.matchToN(videoBGRForFaceCheck, maxFaceInfo);
+                    iFaceBusiness.matchToN(mVideoFrame.getVideoFrameData(), mVideoFrame.getFaceInfo());
                     break;
                 case IFaceBusiness.MATCH_TO_ONE_MODE:
                     //         iFaceBusiness.matchToOne();
                     break;
                 case IFaceBusiness.ENROLL_MODE:
-                    iFaceBusiness.enrollFaceInfo(videoBGRForFaceCheck, maxFaceInfo);
+                    iFaceBusiness.enrollVideoFaceInfo(mVideoFrame.getVideoFrameData(), mVideoFrame.getFaceInfo());
                     break;
                 case IFaceBusiness.JUST_FACE_DETECT:
-                    break;
                 default:
                     break;
             }
 
-        } else {
-            // 检测到人脸个数为0 // 检测过程中出错  // 检测到的人脸质量不合格
-            //   LogUtils.v(" 检测到人脸个数为0, 检测过程中出错, 检测到的人脸质量不合格 ");
-            faceCoveringRectangleView.setRect(0, 0, 0, 0);
-            faceCoveringRectangleView.postInvalidate();
         }
-
-
     }
-
-    public void setView(FaceCoveringRectangleView faceCoveringRectangleView) {
-
-        this.faceCoveringRectangleView = faceCoveringRectangleView;
-    }
-
 
     public void setMode(int flagMode) {
         this.flagMode = flagMode;

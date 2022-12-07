@@ -1,7 +1,6 @@
 package com.open.face.view;
 
 import android.content.Context;
-import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
@@ -13,6 +12,11 @@ import com.arcsoft.face.FaceInfo;
 import com.open.face.camera.CameraListener;
 import com.open.face.camera.ColorCamera;
 import com.open.face.core.ArcAlgorithmHelper;
+import com.open.face.model.EventTips;
+import com.open.face.model.TipMessageCode;
+import com.open.face.model.VideoFrameModel;
+
+import org.greenrobot.eventbus.EventBus;
 
 
 /**
@@ -25,36 +29,51 @@ public class ColorPreviewTextureView extends TextureView implements TextureView.
 
     private final static String TAG = "PreviewTextureView";
     private FaceCoveringCircleView faceCoveringView;
+    //最近一次检测到人脸的时间
+    private Long mLastTimeDetectFace = 0L;
+    //间隔这么长时间未检测到人脸，需要发送“休息信号”
+    private int mInterval = 5000;
+    //是否已经发送了“休息信号”
+    private boolean mIsSendSleepMessage = false;
 
     public ColorPreviewTextureView(Context context, AttributeSet attrs) {
         super(context, attrs);
-
         setSurfaceTextureListener(this);
     }
 
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int width, int height) {
-        Log.d(TAG, "onSurfaceTextureAvailable:  预览画面大小   宽:" + width + "  高:" + height);
-
-        ColorCamera.getInstance().initCamera(Camera.CameraInfo.CAMERA_FACING_FRONT, 1, 2, 3, 4, 0, surfaceTexture, new CameraListener() {
+        ColorCamera.getInstance().initCamera(Camera.CameraInfo.CAMERA_FACING_FRONT, width, height, 0, surfaceTexture, new CameraListener() {
             @Override
-            public void onCameraOpened(Camera camera, int cameraId, int displayOrientation, boolean isMirror) {
-                DrawHelper.init(640, 480, 960, 1280, displayOrientation, 1, false, false, false);
+            public void onCameraOpened(int nv21Width, int nv21Height, int canvasWidth,
+                                       int canvasHeight, int cameraId, int cameraClockwiseRotationValue, boolean isMirror) {
+                Log.d(TAG, "打开相机:  nv21Width:" + nv21Width + "  nv21Height:" + nv21Width + "  canvasWidth:" + canvasWidth + "  canvasHeight:" + canvasHeight);
+                DrawHelper.init(nv21Width, nv21Height, canvasWidth, canvasHeight, cameraClockwiseRotationValue, cameraId, false, false, false);
             }
 
             @Override
-            public void onPreview(byte[] data, Camera camera) {
+            public void onPreview(byte[] data) {
                 //   Log.d(TAG, "当前线程:" + Thread.currentThread().getName() + " onPreview: " + data.toString());
-                FaceInfo maxFaceInfo = ArcAlgorithmHelper.getInstance().detectFace(data);
+                FaceInfo maxFaceInfo = ArcAlgorithmHelper.getInstance().detectMaxFace(data);
                 if (maxFaceInfo != null) {
                     //开始画人脸框了哦(^_^)
+                    if (mIsSendSleepMessage) {
+                        EventBus.getDefault().post(new EventTips<String>("Have_Face", TipMessageCode.Message_Color_Recognize_Resume));
+                        mIsSendSleepMessage = false;
+                    }
                     Rect ret = DrawHelper.adjustRect(maxFaceInfo.getRect());
                     faceCoveringView.setFaceRect(ret);
+                    VideoFrameModel.addVideoFrame(data, maxFaceInfo);
+                    mLastTimeDetectFace = System.currentTimeMillis();
+
                 } else {
-                    // 检测到人脸个数为0 // 检测过程中出错  // 检测到的人脸质量不合格
+                    // 检测到人脸
                     faceCoveringView.setFaceRect(null);
+                    if (System.currentTimeMillis() - mLastTimeDetectFace >= mInterval && !mIsSendSleepMessage) {
+                        EventBus.getDefault().post(new EventTips<String>("Long_Time_No_Face", TipMessageCode.Message_Color_Recognize_Pause));
+                        mIsSendSleepMessage = true;
+                    }
                 }
-                //   VideoFrameModel.addVideoFrame(data);
             }
 
             @Override
@@ -93,7 +112,6 @@ public class ColorPreviewTextureView extends TextureView implements TextureView.
     }
 
     public void setView(FaceCoveringCircleView faceCoveringView) {
-
         this.faceCoveringView = faceCoveringView;
     }
 }

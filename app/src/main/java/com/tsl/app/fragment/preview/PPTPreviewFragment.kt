@@ -13,7 +13,7 @@ import com.lxj.easyadapter.EasyAdapter
 import com.lxj.easyadapter.MultiItemTypeAdapter
 import com.lxj.easyadapter.ViewHolder
 import com.tsl.app.R
-import com.tsl.app.activity.show.ShowActivityViewModel
+import com.tsl.app.activity.set.SettingActivityViewModel
 import kotlinx.android.synthetic.main.fragment_p_p_t_preview.view.*
 
 private const val ARG_PARAM1 = "param1"
@@ -39,7 +39,7 @@ class PPTPreviewFragment : BasePreviewFragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_p_p_t_preview, container, false)
         val nav: NavController? = requireActivity().findNavController(R.id.widget_sa_nav_host_fragment)
-        val model:ShowActivityViewModel = ViewModelProvider(requireActivity()).get(ShowActivityViewModel::class.java)
+        val model:SettingActivityViewModel = ViewModelProvider(requireActivity()).get(SettingActivityViewModel::class.java)
         val rv = view.widget_pptpf_rv
         val list: MutableList<Int> = ArrayList()
         list.add(R.mipmap.image1)

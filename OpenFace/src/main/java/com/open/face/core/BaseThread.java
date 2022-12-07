@@ -57,7 +57,7 @@ public abstract class BaseThread implements Runnable {
     /**
      * 终止线程
      */
-    public void stop() {
+    public void destroy() {
         if (!this.living) {
             return;
         }

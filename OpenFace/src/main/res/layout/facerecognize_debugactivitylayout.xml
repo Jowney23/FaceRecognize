@@ -11,7 +11,7 @@
     <com.open.face.view.FaceCoveringCircleView
         android:id="@+id/facerecognize_faceDetectionView"
         android:layout_width="match_parent"
-        android:layout_height="1280px" />
+        android:layout_height="match_parent" />
     <Button
         android:id="@+id/facerecognize_bt"
         android:layout_width="wrap_content"

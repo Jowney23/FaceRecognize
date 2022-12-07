@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/set_nav"
+    app:startDestination="@id/imageEnrollFragment">
+
+    <fragment
+        android:id="@+id/imageEnrollFragment"
+        android:name="com.tsl.app.fragment.set.ImageEnrollFragment"
+        android:label="fragment_image_enroll"
+        tools:layout="@layout/fragment_image_enroll" />
+</navigation>

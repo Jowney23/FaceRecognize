@@ -1,4 +1,5 @@
 package com.jowney.common.util
+
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.app.Activity
@@ -27,6 +28,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 import java.util.*
+
 class FileTool {
 
 
@@ -650,11 +652,12 @@ class FileTool {
         @JvmStatic
         fun getDiskCacheDir(context: Context): String? {
             var cachePath: String? = null
-            cachePath = if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState() || !Environment.isExternalStorageRemovable()) {
-                context.externalCacheDir!!.path
-            } else {
-                context.cacheDir.path
-            }
+            cachePath =
+                if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState() || !Environment.isExternalStorageRemovable()) {
+                    context.externalCacheDir!!.path
+                } else {
+                    context.cacheDir.path
+                }
             return cachePath
         }
 
@@ -667,11 +670,12 @@ class FileTool {
         @JvmStatic
         fun getDiskFileDir(context: Context): String? {
             var cachePath: String? = null
-            cachePath = if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState() || !Environment.isExternalStorageRemovable()) {
-                context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)!!.path
-            } else {
-                context.filesDir.path
-            }
+            cachePath =
+                if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState() || !Environment.isExternalStorageRemovable()) {
+                    context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)!!.path
+                } else {
+                    context.filesDir.path
+                }
             return cachePath
         }
 
@@ -731,14 +735,18 @@ class FileTool {
                     if (line.length > 0 && line.startsWith("http://")) {
                         //replce 这行的内容
 //                    RxLogTool.d("ts替换", line + "  replce  " + pathList.get(num).getAbsolutePath());
-                        buf.append("""
+                        buf.append(
+                            """
     file:${pathList[num].absolutePath}
-    """.trimIndent())
+    """.trimIndent()
+                        )
                         num++
                     } else {
-                        buf.append("""
+                        buf.append(
+                            """
     $line
-    """.trimIndent())
+    """.trimIndent()
+                        )
                     }
                 }
                 `in`!!.close()
@@ -1326,7 +1334,11 @@ class FileTool {
          * @return 文件链表
          */
         @JvmStatic
-        fun listFilesInDirWithFilter(dirPath: String?, suffix: String, isRecursive: Boolean): List<File>? {
+        fun listFilesInDirWithFilter(
+            dirPath: String?,
+            suffix: String,
+            isRecursive: Boolean
+        ): List<File>? {
             return listFilesInDirWithFilter(getFileByPath(dirPath), suffix, isRecursive)
         }
 
@@ -1341,7 +1353,11 @@ class FileTool {
          * @return 文件链表
          */
         @JvmStatic
-        fun listFilesInDirWithFilter(dir: File?, suffix: String, isRecursive: Boolean): List<File>? {
+        fun listFilesInDirWithFilter(
+            dir: File?,
+            suffix: String,
+            isRecursive: Boolean
+        ): List<File>? {
             if (isRecursive) {
                 return listFilesInDirWithFilter(dir, suffix)
             }
@@ -1408,7 +1424,11 @@ class FileTool {
          * @return 文件链表
          */
         @JvmStatic
-        fun listFilesInDirWithFilter(dirPath: String?, filter: FilenameFilter, isRecursive: Boolean): List<File>? {
+        fun listFilesInDirWithFilter(
+            dirPath: String?,
+            filter: FilenameFilter,
+            isRecursive: Boolean
+        ): List<File>? {
             return listFilesInDirWithFilter(getFileByPath(dirPath), filter, isRecursive)
         }
 
@@ -1421,7 +1441,11 @@ class FileTool {
          * @return 文件链表
          */
         @JvmStatic
-        fun listFilesInDirWithFilter(dir: File?, filter: FilenameFilter, isRecursive: Boolean): List<File>? {
+        fun listFilesInDirWithFilter(
+            dir: File?,
+            filter: FilenameFilter,
+            isRecursive: Boolean
+        ): List<File>? {
             if (isRecursive) {
                 return listFilesInDirWithFilter(dir, filter)
             }
@@ -1630,7 +1654,12 @@ class FileTool {
          * @return 包含制定行的list
          */
         @JvmStatic
-        fun readFile2List(filePath: String?, st: Int, end: Int, charsetName: String?): List<String>? {
+        fun readFile2List(
+            filePath: String?,
+            st: Int,
+            end: Int,
+            charsetName: String?
+        ): List<String>? {
             return readFile2List(getFileByPath(filePath), st, end, charsetName)
         }
 
@@ -2047,16 +2076,27 @@ class FileTool {
         @JvmStatic
         fun getImageContentUri(context: Context?, imageFile: File?): Uri? {
             val filePath = imageFile?.absolutePath
-            val cursor = context?.contentResolver?.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Images.Media._ID), MediaStore.Images.Media.DATA + "=? ", arrayOf(filePath), null)
+            val cursor = context?.contentResolver?.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Images.Media._ID),
+                MediaStore.Images.Media.DATA + "=? ",
+                arrayOf(filePath),
+                null
+            )
             return if (cursor != null && cursor.moveToFirst()) {
-                val id = cursor.getInt(cursor.getColumnIndex(MediaStore.MediaColumns._ID))
+                val index: Int = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
+                if (index < 0) return null
+                val id = cursor.getInt(index)
                 val baseUri = Uri.parse("content://media/external/images/media")
                 Uri.withAppendedPath(baseUri, "" + id)
             } else {
                 if (imageFile!!.exists()) {
                     val values = ContentValues()
                     values.put(MediaStore.Images.Media.DATA, filePath)
-                    context!!.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    context!!.contentResolver.insert(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        values
+                    )
                 } else {
                     null
                 }
@@ -2093,7 +2133,9 @@ class FileTool {
                 } else if (isDownloadsDocument(uri)) {
                     val id = DocumentsContract.getDocumentId(uri)
                     val contentUri = ContentUris.withAppendedId(
-                        Uri.parse("content://downloads/public_downloads"), java.lang.Long.valueOf(id))
+                        Uri.parse("content://downloads/public_downloads"),
+                        java.lang.Long.valueOf(id)
+                    )
                     return getDataColumn(context, contentUri, null, null)
                 } else if (isMediaDocument(uri)) {
                     val docId = DocumentsContract.getDocumentId(uri)
@@ -2161,12 +2203,18 @@ class FileTool {
         }
 
         @JvmStatic
-        fun getDataColumn(context: Context, uri: Uri?, selection: String?, selectionArgs: Array<String>?): String? {
+        fun getDataColumn(
+            context: Context,
+            uri: Uri?,
+            selection: String?,
+            selectionArgs: Array<String>?
+        ): String? {
             var cursor: Cursor? = null
             val column = MediaStore.Images.Media.DATA
             val projection = arrayOf(column)
             try {
-                cursor = context.contentResolver.query(uri!!, projection, selection, selectionArgs, null)
+                cursor =
+                    context.contentResolver.query(uri!!, projection, selection, selectionArgs, null)
                 if (cursor != null && cursor.moveToFirst()) {
                     val index = cursor.getColumnIndexOrThrow(column)
                     return cursor.getString(index)
@@ -2218,7 +2266,12 @@ class FileTool {
         }
 
         @JvmStatic
-        fun exportDb2Sdcard(context: Context, path: String, realDBName: String?, exportDBName: String) {
+        fun exportDb2Sdcard(
+            context: Context,
+            path: String,
+            realDBName: String?,
+            exportDBName: String
+        ) {
             val filePath = context.getDatabasePath(realDBName).absolutePath
             val buffer = ByteArray(1024)
             try {
@@ -2236,10 +2289,12 @@ class FileTool {
                 Log.e("TAG", var8.toString())
             }
         }
+
         @JvmStatic
         fun writeByteArrayToFile(filePath: String?, a_WriteBuffer: ByteArray?): Boolean {
             try {
                 val file = File(filePath)
+
                 val FOS = FileOutputStream(file)
                 FOS.write(a_WriteBuffer)
                 FOS.flush()
@@ -2255,6 +2310,7 @@ class FileTool {
             }
             return true
         }
+
         @JvmStatic
         fun readByteArrayFromFile(filePath: String?, outArray: ByteArray?, length: Int): Boolean {
             try {
