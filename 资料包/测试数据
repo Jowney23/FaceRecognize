@@ -1,0 +1,1 @@
+1、1:N模式下1000个特征值全部比对一遍，平均需要330ms。(NV21数据 previewWidth: 1920, previewHeight: 1080)

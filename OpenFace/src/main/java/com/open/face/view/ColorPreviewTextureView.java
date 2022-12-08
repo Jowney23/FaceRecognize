@@ -28,13 +28,15 @@ import org.greenrobot.eventbus.EventBus;
 public class ColorPreviewTextureView extends TextureView implements TextureView.SurfaceTextureListener {
 
     private final static String TAG = "PreviewTextureView";
-    private FaceCoveringCircleView faceCoveringView;
+    private FaceCoveringCircleView mFaceCoveringView;
     //最近一次检测到人脸的时间
     private Long mLastTimeDetectFace = 0L;
     //间隔这么长时间未检测到人脸，需要发送“休息信号”
     private int mInterval = 5000;
     //是否已经发送了“休息信号”
     private boolean mIsSendSleepMessage = false;
+    //每次检测到人脸时 丢弃第一帧，因为第一帧是人动态调整的过程，采集的人脸较模糊，或者不完整
+    private int mAbandonFrameNumber = 1;
 
     public ColorPreviewTextureView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -48,7 +50,7 @@ public class ColorPreviewTextureView extends TextureView implements TextureView.
             public void onCameraOpened(int nv21Width, int nv21Height, int canvasWidth,
                                        int canvasHeight, int cameraId, int cameraClockwiseRotationValue, boolean isMirror) {
                 Log.d(TAG, "打开相机:  nv21Width:" + nv21Width + "  nv21Height:" + nv21Width + "  canvasWidth:" + canvasWidth + "  canvasHeight:" + canvasHeight);
-                DrawHelper.init(nv21Width, nv21Height, canvasWidth, canvasHeight, cameraClockwiseRotationValue, cameraId, false, false, false);
+                DrawFaceCoveringHelper.init(nv21Width, nv21Height, canvasWidth, canvasHeight, cameraClockwiseRotationValue, cameraId, false, false, false);
             }
 
             @Override
@@ -61,14 +63,19 @@ public class ColorPreviewTextureView extends TextureView implements TextureView.
                         EventBus.getDefault().post(new EventTips<String>("Have_Face", TipMessageCode.Message_Color_Recognize_Resume));
                         mIsSendSleepMessage = false;
                     }
-                    Rect ret = DrawHelper.adjustRect(maxFaceInfo.getRect());
-                    faceCoveringView.setFaceRect(ret);
+                    Rect ret = DrawFaceCoveringHelper.adjustRect(maxFaceInfo.getRect());
+                    mFaceCoveringView.setFaceRect(ret);
+                    if (mAbandonFrameNumber != 0) {
+                        mAbandonFrameNumber--;
+                        return;
+                    }
                     VideoFrameModel.addVideoFrame(data, maxFaceInfo);
                     mLastTimeDetectFace = System.currentTimeMillis();
 
                 } else {
                     // 检测到人脸
-                    faceCoveringView.setFaceRect(null);
+                    mAbandonFrameNumber = 1;
+                    mFaceCoveringView.setFaceRect(null);
                     if (System.currentTimeMillis() - mLastTimeDetectFace >= mInterval && !mIsSendSleepMessage) {
                         EventBus.getDefault().post(new EventTips<String>("Long_Time_No_Face", TipMessageCode.Message_Color_Recognize_Pause));
                         mIsSendSleepMessage = true;
@@ -112,6 +119,6 @@ public class ColorPreviewTextureView extends TextureView implements TextureView.
     }
 
     public void setView(FaceCoveringCircleView faceCoveringView) {
-        this.faceCoveringView = faceCoveringView;
+        this.mFaceCoveringView = faceCoveringView;
     }
 }

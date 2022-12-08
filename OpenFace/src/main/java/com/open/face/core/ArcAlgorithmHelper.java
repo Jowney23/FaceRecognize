@@ -19,6 +19,7 @@ import com.arcsoft.imageutil.ArcSoftImageUtil;
 import com.arcsoft.imageutil.ArcSoftImageUtilError;
 import com.jowney.common.BaseApplication;
 import com.jowney.common.util.FileTool;
+import com.jowney.common.util.logger.L;
 import com.open.face.camera.ColorCamera;
 import com.open.face.model.EventTips;
 import com.open.face.model.TipMessageCode;
@@ -201,6 +202,7 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
     @Override
     public String enrollFaceFeatureBitmap(Bitmap bitmap) {
         synchronized (this) {
+            featureCountGlobal += 1;
             //对齐函数中有判断bitmap宽高是否为4的倍数，如果是的话返回原bitmap，不是的话返回新的
             bitmap = ArcSoftImageUtil.getAlignedBitmap(bitmap, false);
             if (bitmap == null) return "";
@@ -241,11 +243,11 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
 
                 //内存保存一份
                 residentsFeatureGlobal.put(newTemplateID, faceFeature.getFeatureData());
-                featureCountGlobal += 1;
                 loadedFeatureCountGlobal += 1;
-                EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + featureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_START));
+                L.v("应有的模板数量: " + featureCountGlobal + "      实际加载的模板数量:" + loadedFeatureCountGlobal);
+               /* EventBus.getDefault().post(new EventTips<>("应加载的模板数量：" + featureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_START));
                 EventBus.getDefault().post(new EventTips<>("实际加载的模板数量：" + loadedFeatureCountGlobal, TipMessageCode.MESSAGE_LOAD_TEMPLATE_END));
-
+*/
             } else {
                 Log.e(TAG, "registerBgr24: no face detected, code is " + code);
                 return "";
@@ -479,27 +481,27 @@ public class ArcAlgorithmHelper implements IAlgorithmHelper {
         // Log.v(TAG, "开始1：N");
         int frCode = fFeatureEngine.extractFaceFeature(videoFrame, ColorCamera.getInstance().getNV21Width(), ColorCamera.getInstance().getNV21Height(), FaceEngine.CP_PAF_NV21, faceInfo, newFaceFeature);
         if (frCode == ErrorInfo.MOK) {
-
-        } else {
-
-        }
-        //第二步存储住户模版的residentsFeature中去比对
-        for (Map.Entry<String, byte[]> entry : residentsFeatureGlobal.entrySet()) {
-            oldFaceFeature.setFeatureData(entry.getValue());
-            fCompareEngine.compareFaceFeature(newFaceFeature, oldFaceFeature, faceSimilar);
-            Log.v(TAG, "匹配中分数：" + faceSimilar.getScore());
-            if (faceSimilar.getScore() > similarityTem) {
-                similarityTem = faceSimilar.getScore();
-                residentFeatureIdTem = entry.getKey();
-                //没有将库中数据全部匹配完，但是分数达到阈值了，直接返回
-                if (similarityTem >= CacheHelper.RECOGNIZE_THRESHOLD_VALUE)
-                    return residentFeatureIdTem;
+            //第二步存储住户模版的residentsFeature中去比对
+            for (Map.Entry<String, byte[]> entry : residentsFeatureGlobal.entrySet()) {
+                oldFaceFeature.setFeatureData(entry.getValue());
+                fCompareEngine.compareFaceFeature(newFaceFeature, oldFaceFeature, faceSimilar);
+                // Log.v(TAG, "匹配中分数：" + faceSimilar.getScore());
+                if (faceSimilar.getScore() > similarityTem) {
+                    similarityTem = faceSimilar.getScore();
+                    residentFeatureIdTem = entry.getKey();
+                    //没有将库中数据全部匹配完，但是分数达到阈值了，直接返回
+                    if (similarityTem >= CacheHelper.RECOGNIZE_THRESHOLD_VALUE){
+                        Log.v(TAG, "不一定是最高分，但该分数大于阈值：" + similarityTem);
+                        return residentFeatureIdTem;
+                    }
+                }
             }
-        }
-
-        if (similarityTem >= CacheHelper.RECOGNIZE_THRESHOLD_VALUE) {
-            //  Log.v(TAG, "匹配成功份数：" + similarityTem);
-            return residentFeatureIdTem;
+            Log.v(TAG, "最高分：" + similarityTem);
+            if (similarityTem >= CacheHelper.RECOGNIZE_THRESHOLD_VALUE) {
+                return residentFeatureIdTem;
+            } else {
+                return null;
+            }
         } else {
             return null;
         }

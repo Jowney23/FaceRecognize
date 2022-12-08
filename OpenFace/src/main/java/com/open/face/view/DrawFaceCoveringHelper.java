@@ -6,7 +6,7 @@ import android.hardware.Camera;
 /**
  * 绘制人脸框帮助类
  */
-public class DrawHelper {
+public class DrawFaceCoveringHelper {
     private static int nv21Width, nv21wHeight, canvasWidth, canvasHeight, cameraDisplayOrientation, cameraId;
     private static boolean isMirror;
     private static boolean mirrorHorizontal = false, mirrorVertical = false;
@@ -27,15 +27,15 @@ public class DrawHelper {
     public static void init(int nv21Width, int nv21Height, int canvasWidth,
                             int canvasHeight, int cameraDisplayOrientation, int cameraId,
                             boolean isMirror, boolean mirrorHorizontal, boolean mirrorVertical) {
-        DrawHelper.nv21Width = nv21Width;
-        DrawHelper.nv21wHeight = nv21Height;
-        DrawHelper.canvasWidth = canvasWidth;
-        DrawHelper.canvasHeight = canvasHeight;
-        DrawHelper.cameraDisplayOrientation = cameraDisplayOrientation;
-        DrawHelper.cameraId = cameraId;
-        DrawHelper.isMirror = isMirror;
-        DrawHelper.mirrorHorizontal = mirrorHorizontal;
-        DrawHelper.mirrorVertical = mirrorVertical;
+        DrawFaceCoveringHelper.nv21Width = nv21Width;
+        DrawFaceCoveringHelper.nv21wHeight = nv21Height;
+        DrawFaceCoveringHelper.canvasWidth = canvasWidth;
+        DrawFaceCoveringHelper.canvasHeight = canvasHeight;
+        DrawFaceCoveringHelper.cameraDisplayOrientation = cameraDisplayOrientation;
+        DrawFaceCoveringHelper.cameraId = cameraId;
+        DrawFaceCoveringHelper.isMirror = isMirror;
+        DrawFaceCoveringHelper.mirrorHorizontal = mirrorHorizontal;
+        DrawFaceCoveringHelper.mirrorVertical = mirrorVertical;
     }
 
 
@@ -46,15 +46,15 @@ public class DrawHelper {
      * @return 调整后的需要被绘制到View上的rect
      */
     public static Rect adjustRect(Rect ftRect) {
-        int previewWidth = DrawHelper.nv21Width;
-        int previewHeight = DrawHelper.nv21wHeight;
-        int canvasWidth = DrawHelper.canvasWidth;
-        int canvasHeight = DrawHelper.canvasHeight;
-        int cameraDisplayOrientation = DrawHelper.cameraDisplayOrientation;
-        int cameraId = DrawHelper.cameraId;
-        boolean isMirror = DrawHelper.isMirror;
-        boolean mirrorHorizontal = DrawHelper.mirrorHorizontal;
-        boolean mirrorVertical = DrawHelper.mirrorVertical;
+        int previewWidth = DrawFaceCoveringHelper.nv21Width;
+        int previewHeight = DrawFaceCoveringHelper.nv21wHeight;
+        int canvasWidth = DrawFaceCoveringHelper.canvasWidth;
+        int canvasHeight = DrawFaceCoveringHelper.canvasHeight;
+        int cameraDisplayOrientation = DrawFaceCoveringHelper.cameraDisplayOrientation;
+        int cameraId = DrawFaceCoveringHelper.cameraId;
+        boolean isMirror = DrawFaceCoveringHelper.isMirror;
+        boolean mirrorHorizontal = DrawFaceCoveringHelper.mirrorHorizontal;
+        boolean mirrorVertical = DrawFaceCoveringHelper.mirrorVertical;
 
         if (ftRect == null) {
             return null;
